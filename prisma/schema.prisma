@@ -41,6 +41,31 @@ enum AssessmentType {
   PRACTICAL
 }
 
+enum SocialFollowUpType {
+  INDIVIDUAL_INTERVIEW
+  FAMILY_VISIT
+  PHONE_CALL
+  MEDIATION
+  REFERRAL
+  MATERIAL_SUPPORT
+  PSYCHOLOGICAL_SUPPORT
+  OTHER
+}
+
+enum FollowUpPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum FollowUpStatus {
+  OPEN
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
 model Beneficiary {
   id                 String            @id @default(cuid())
   firstName          String
@@ -78,6 +103,7 @@ model Beneficiary {
   enrollments         GroupEnrollment[]
   attendanceRecords   AttendanceRecord[]
   academicResults     AcademicResult[]
+  socialFollowUps     SocialFollowUp[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -167,30 +193,55 @@ model AttendanceRecord {
 }
 
 model AcademicAssessment {
-  id           String            @id @default(cuid())
-  groupId      String
-  group        LearningGroup     @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  title        String
-  subject      String
-  type         AssessmentType
+  id             String           @id @default(cuid())
+  groupId        String
+  group          LearningGroup    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  title          String
+  subject        String
+  type           AssessmentType
   assessmentDate DateTime
-  maxScore     Float             @default(20)
-  results      AcademicResult[]
-  createdAt    DateTime          @default(now())
-  updatedAt    DateTime          @updatedAt
+  maxScore       Float            @default(20)
+  results        AcademicResult[]
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
 }
 
 model AcademicResult {
-  id            String             @id @default(cuid())
-  assessmentId  String
-  beneficiaryId String
-  score         Float?
+  id              String             @id @default(cuid())
+  assessmentId    String
+  beneficiaryId   String
+  score           Float?
   competencyLevel String?
-  notes         String?
-  assessment    AcademicAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
-  beneficiary   Beneficiary        @relation(fields: [beneficiaryId], references: [id], onDelete: Cascade)
-  createdAt     DateTime           @default(now())
-  updatedAt     DateTime           @updatedAt
+  notes           String?
+  assessment      AcademicAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  beneficiary     Beneficiary        @relation(fields: [beneficiaryId], references: [id], onDelete: Cascade)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
 
   @@unique([assessmentId, beneficiaryId])
+}
+
+model SocialFollowUp {
+  id              String             @id @default(cuid())
+  beneficiaryId   String
+  beneficiary     Beneficiary        @relation(fields: [beneficiaryId], references: [id], onDelete: Cascade)
+  type            SocialFollowUpType
+  priority        FollowUpPriority   @default(NORMAL)
+  status          FollowUpStatus     @default(OPEN)
+  eventDate       DateTime
+  responsibleName String?
+  subject         String
+  details         String?
+  actionsTaken    String?
+  partnerName     String?
+  referralReason  String?
+  nextAction      String?
+  nextFollowUpDate DateTime?
+  outcome         String?
+  confidentialityNote String?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  @@index([status, priority])
+  @@index([eventDate])
 }
