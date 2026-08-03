@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import { BeneficiaryProfileForm } from "@/components/BeneficiaryProfileForm";
+import { AdmissionAssessmentForm } from "@/components/AdmissionAssessmentForm";
 import { prisma } from "@/lib/prisma";
 
 const statusLabels: Record<string, string> = {
@@ -17,7 +18,8 @@ const statusLabels: Record<string, string> = {
 
 export default async function BeneficiaryProfilePage({ params }: { params: { id: string } }) {
   const beneficiary = await prisma.beneficiary.findUnique({
-    where: { id: params.id }
+    where: { id: params.id },
+    include: { admissionAssessment: true }
   });
 
   if (!beneficiary) notFound();
@@ -50,7 +52,17 @@ export default async function BeneficiaryProfilePage({ params }: { params: { id:
         </article>
       </div>
 
-      <BeneficiaryProfileForm beneficiary={beneficiary} />
+      <div className="mb-10">
+        <BeneficiaryProfileForm beneficiary={beneficiary} />
+      </div>
+
+      <div className="mb-5 border-t border-slate-200 pt-8">
+        <p className="text-sm text-slate-500">المرحلة الثانية من الملف</p>
+        <h2 className="mt-1 text-2xl font-bold">القبول والتشخيص والتوجيه</h2>
+        <p className="mt-2 text-slate-600">توثيق المقابلة والاختبارات والميولات المهنية وقرار لجنة القبول.</p>
+      </div>
+
+      <AdmissionAssessmentForm beneficiaryId={beneficiary.id} assessment={beneficiary.admissionAssessment} />
     </AppShell>
   );
 }
