@@ -29,6 +29,28 @@ model Beneficiary {
   address            String?
   lastEducationLevel String?
   status             BeneficiaryStatus @default(PRE_REGISTERED)
-  createdAt          DateTime          @default(now())
-  updatedAt          DateTime          @updatedAt
+
+  familySituation       String?
+  guardianName          String?
+  guardianRelationship  String?
+  householdSize         Int?
+  familyIncomeSituation String?
+  housingSituation      String?
+  socialCoverage        String?
+
+  lastSchoolName       String?
+  dropoutYear          Int?
+  dropoutReasons       String?
+  learningDifficulties String?
+  specialNeeds         String?
+
+  diagnosticSummary String?
+  strengths         String?
+  priorityNeeds     String?
+  supportPlan       String?
+  careerGoal        String?
+  followUpNotes     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
