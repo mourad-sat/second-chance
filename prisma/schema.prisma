@@ -66,6 +66,29 @@ enum FollowUpStatus {
   CANCELLED
 }
 
+enum SkillLevel {
+  NOT_ASSESSED
+  BEGINNER
+  DEVELOPING
+  COMPETENT
+  ADVANCED
+}
+
+enum ProjectStatus {
+  IDEA
+  PLANNING
+  IN_PROGRESS
+  COMPLETED
+  SUSPENDED
+}
+
+enum InternshipStatus {
+  PLANNED
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
 model Beneficiary {
   id                 String            @id @default(cuid())
   firstName          String
@@ -104,6 +127,9 @@ model Beneficiary {
   attendanceRecords   AttendanceRecord[]
   academicResults     AcademicResult[]
   socialFollowUps     SocialFollowUp[]
+  skillEvaluations    SkillEvaluation[]
+  vocationalProjects  VocationalProject[]
+  internships         Internship[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -113,135 +139,226 @@ model AdmissionAssessment {
   id            String      @id @default(cuid())
   beneficiaryId String      @unique
   beneficiary   Beneficiary @relation(fields: [beneficiaryId], references: [id], onDelete: Cascade)
-
-  interviewDate       DateTime?
-  interviewerName     String?
-  interviewSummary    String?
-  motivationLevel     Int?
+  interviewDate DateTime?
+  interviewerName String?
+  interviewSummary String?
+  motivationLevel Int?
   attendanceReadiness Int?
-
-  arabicScore          Float?
-  frenchScore          Float?
-  mathematicsScore     Float?
-  cognitiveScore       Float?
+  arabicScore Float?
+  frenchScore Float?
+  mathematicsScore Float?
+  cognitiveScore Float?
   psychologicalSummary String?
-
-  creativeDigitalInterest   Float?
-  socialServicesInterest    Float?
-  technicalInterest         Float?
-  greenEconomyInterest      Float?
+  creativeDigitalInterest Float?
+  socialServicesInterest Float?
+  technicalInterest Float?
+  greenEconomyInterest Float?
   culturalAnimationInterest Float?
-  vocationalInterestNotes   String?
-
-  proposedTrack      String?
-  proposedSpecialty  String?
-  orientationReason  String?
-  committeeNotes     String?
-  decision           AdmissionDecision @default(PENDING)
-  decisionDate       DateTime?
-
+  vocationalInterestNotes String?
+  proposedTrack String?
+  proposedSpecialty String?
+  orientationReason String?
+  committeeNotes String?
+  decision AdmissionDecision @default(PENDING)
+  decisionDate DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
 model LearningGroup {
-  id           String            @id @default(cuid())
-  name         String
+  id String @id @default(cuid())
+  name String
   academicYear String
-  track        String?
-  specialty    String?
-  room         String?
-  facilitator  String?
-  isActive     Boolean           @default(true)
-  enrollments  GroupEnrollment[]
-  attendance   AttendanceRecord[]
-  assessments  AcademicAssessment[]
-  createdAt    DateTime          @default(now())
-  updatedAt    DateTime          @updatedAt
-
+  track String?
+  specialty String?
+  room String?
+  facilitator String?
+  isActive Boolean @default(true)
+  enrollments GroupEnrollment[]
+  attendance AttendanceRecord[]
+  assessments AcademicAssessment[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
   @@unique([name, academicYear])
 }
 
 model GroupEnrollment {
-  id            String        @id @default(cuid())
+  id String @id @default(cuid())
   beneficiaryId String
-  groupId       String
-  beneficiary   Beneficiary   @relation(fields: [beneficiaryId], references: [id], onDelete: Cascade)
-  group         LearningGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  enrolledAt    DateTime      @default(now())
-  leftAt        DateTime?
-
+  groupId String
+  beneficiary Beneficiary @relation(fields: [beneficiaryId], references: [id], onDelete: Cascade)
+  group LearningGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  enrolledAt DateTime @default(now())
+  leftAt DateTime?
   @@unique([beneficiaryId, groupId])
 }
 
 model AttendanceRecord {
-  id            String           @id @default(cuid())
+  id String @id @default(cuid())
   beneficiaryId String
-  groupId       String
-  date          DateTime
-  status        AttendanceStatus
-  arrivalTime   String?
-  excuse        String?
-  notes         String?
-  beneficiary   Beneficiary      @relation(fields: [beneficiaryId], references: [id], onDelete: Cascade)
-  group         LearningGroup    @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
-
+  groupId String
+  date DateTime
+  status AttendanceStatus
+  arrivalTime String?
+  excuse String?
+  notes String?
+  beneficiary Beneficiary @relation(fields: [beneficiaryId], references: [id], onDelete: Cascade)
+  group LearningGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
   @@unique([beneficiaryId, groupId, date])
   @@index([date, status])
 }
 
 model AcademicAssessment {
-  id             String           @id @default(cuid())
-  groupId        String
-  group          LearningGroup    @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  title          String
-  subject        String
-  type           AssessmentType
+  id String @id @default(cuid())
+  groupId String
+  group LearningGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  title String
+  subject String
+  type AssessmentType
   assessmentDate DateTime
-  maxScore       Float            @default(20)
-  results        AcademicResult[]
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
+  maxScore Float @default(20)
+  results AcademicResult[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model AcademicResult {
-  id              String             @id @default(cuid())
-  assessmentId    String
-  beneficiaryId   String
-  score           Float?
+  id String @id @default(cuid())
+  assessmentId String
+  beneficiaryId String
+  score Float?
   competencyLevel String?
-  notes           String?
-  assessment      AcademicAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
-  beneficiary     Beneficiary        @relation(fields: [beneficiaryId], references: [id], onDelete: Cascade)
-  createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
-
+  notes String?
+  assessment AcademicAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  beneficiary Beneficiary @relation(fields: [beneficiaryId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
   @@unique([assessmentId, beneficiaryId])
 }
 
 model SocialFollowUp {
-  id              String             @id @default(cuid())
-  beneficiaryId   String
-  beneficiary     Beneficiary        @relation(fields: [beneficiaryId], references: [id], onDelete: Cascade)
-  type            SocialFollowUpType
-  priority        FollowUpPriority   @default(NORMAL)
-  status          FollowUpStatus     @default(OPEN)
-  eventDate       DateTime
+  id String @id @default(cuid())
+  beneficiaryId String
+  beneficiary Beneficiary @relation(fields: [beneficiaryId], references: [id], onDelete: Cascade)
+  type SocialFollowUpType
+  priority FollowUpPriority @default(NORMAL)
+  status FollowUpStatus @default(OPEN)
+  eventDate DateTime
   responsibleName String?
-  subject         String
-  details         String?
-  actionsTaken    String?
-  partnerName     String?
-  referralReason  String?
-  nextAction      String?
+  subject String
+  details String?
+  actionsTaken String?
+  partnerName String?
+  referralReason String?
+  nextAction String?
   nextFollowUpDate DateTime?
-  outcome         String?
+  outcome String?
   confidentialityNote String?
-  createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
-
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
   @@index([status, priority])
   @@index([eventDate])
+}
+
+model VocationalProgram {
+  id String @id @default(cuid())
+  track String
+  specialty String
+  moduleName String
+  description String?
+  totalHours Int?
+  isActive Boolean @default(true)
+  competencies VocationalCompetency[]
+  workshops WorkshopSession[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([track, specialty, moduleName])
+}
+
+model VocationalCompetency {
+  id String @id @default(cuid())
+  programId String
+  code String?
+  title String
+  description String?
+  targetLevel SkillLevel @default(COMPETENT)
+  program VocationalProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
+  evaluations SkillEvaluation[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([programId, title])
+}
+
+model WorkshopSession {
+  id String @id @default(cuid())
+  programId String
+  sessionDate DateTime
+  title String
+  trainerName String?
+  durationHours Float?
+  location String?
+  activities String?
+  materials String?
+  observations String?
+  program VocationalProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model SkillEvaluation {
+  id String @id @default(cuid())
+  beneficiaryId String
+  competencyId String
+  evaluationDate DateTime
+  level SkillLevel @default(NOT_ASSESSED)
+  score Float?
+  evaluatorName String?
+  evidence String?
+  notes String?
+  beneficiary Beneficiary @relation(fields: [beneficiaryId], references: [id], onDelete: Cascade)
+  competency VocationalCompetency @relation(fields: [competencyId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([beneficiaryId, competencyId, evaluationDate])
+}
+
+model VocationalProject {
+  id String @id @default(cuid())
+  beneficiaryId String
+  title String
+  description String?
+  status ProjectStatus @default(IDEA)
+  mentorName String?
+  startDate DateTime?
+  targetDate DateTime?
+  completionDate DateTime?
+  progressPercent Int @default(0)
+  skillsApplied String?
+  deliverables String?
+  evaluationNotes String?
+  beneficiary Beneficiary @relation(fields: [beneficiaryId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Internship {
+  id String @id @default(cuid())
+  beneficiaryId String
+  organizationName String
+  field String?
+  supervisorName String?
+  supervisorPhone String?
+  startDate DateTime
+  endDate DateTime?
+  status InternshipStatus @default(PLANNED)
+  objectives String?
+  tasks String?
+  attendanceNotes String?
+  supervisorEvaluation String?
+  finalResult String?
+  beneficiary Beneficiary @relation(fields: [beneficiaryId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
