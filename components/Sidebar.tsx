@@ -7,7 +7,7 @@ const links = [
   ["/attendance", "الحضور والغياب"],
   ["/academic-tracking", "التتبع التربوي"],
   ["/social-support", "المواكبة الاجتماعية"],
-  ["#", "التكوين المهني"],
+  ["/vocational-training", "التكوين المهني"],
   ["#", "التقارير"]
 ];
 
