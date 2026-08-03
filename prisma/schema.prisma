@@ -26,6 +26,21 @@ enum AdmissionDecision {
   NEEDS_REASSESSMENT
 }
 
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  EXCUSED
+}
+
+enum AssessmentType {
+  DIAGNOSTIC
+  FORMATIVE
+  SUMMATIVE
+  PROJECT
+  PRACTICAL
+}
+
 model Beneficiary {
   id                 String            @id @default(cuid())
   firstName          String
@@ -60,6 +75,9 @@ model Beneficiary {
   followUpNotes     String?
 
   admissionAssessment AdmissionAssessment?
+  enrollments         GroupEnrollment[]
+  attendanceRecords   AttendanceRecord[]
+  academicResults     AcademicResult[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -82,20 +100,97 @@ model AdmissionAssessment {
   cognitiveScore       Float?
   psychologicalSummary String?
 
-  creativeDigitalInterest Float?
-  socialServicesInterest  Float?
-  technicalInterest       Float?
-  greenEconomyInterest    Float?
+  creativeDigitalInterest   Float?
+  socialServicesInterest    Float?
+  technicalInterest         Float?
+  greenEconomyInterest      Float?
   culturalAnimationInterest Float?
-  vocationalInterestNotes String?
+  vocationalInterestNotes   String?
 
-  proposedTrack     String?
-  proposedSpecialty String?
-  orientationReason String?
-  committeeNotes    String?
-  decision          AdmissionDecision @default(PENDING)
-  decisionDate      DateTime?
+  proposedTrack      String?
+  proposedSpecialty  String?
+  orientationReason  String?
+  committeeNotes     String?
+  decision           AdmissionDecision @default(PENDING)
+  decisionDate       DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model LearningGroup {
+  id           String            @id @default(cuid())
+  name         String
+  academicYear String
+  track        String?
+  specialty    String?
+  room         String?
+  facilitator  String?
+  isActive     Boolean           @default(true)
+  enrollments  GroupEnrollment[]
+  attendance   AttendanceRecord[]
+  assessments  AcademicAssessment[]
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  @@unique([name, academicYear])
+}
+
+model GroupEnrollment {
+  id            String        @id @default(cuid())
+  beneficiaryId String
+  groupId       String
+  beneficiary   Beneficiary   @relation(fields: [beneficiaryId], references: [id], onDelete: Cascade)
+  group         LearningGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  enrolledAt    DateTime      @default(now())
+  leftAt        DateTime?
+
+  @@unique([beneficiaryId, groupId])
+}
+
+model AttendanceRecord {
+  id            String           @id @default(cuid())
+  beneficiaryId String
+  groupId       String
+  date          DateTime
+  status        AttendanceStatus
+  arrivalTime   String?
+  excuse        String?
+  notes         String?
+  beneficiary   Beneficiary      @relation(fields: [beneficiaryId], references: [id], onDelete: Cascade)
+  group         LearningGroup    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  @@unique([beneficiaryId, groupId, date])
+  @@index([date, status])
+}
+
+model AcademicAssessment {
+  id           String            @id @default(cuid())
+  groupId      String
+  group        LearningGroup     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  title        String
+  subject      String
+  type         AssessmentType
+  assessmentDate DateTime
+  maxScore     Float             @default(20)
+  results      AcademicResult[]
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+}
+
+model AcademicResult {
+  id            String             @id @default(cuid())
+  assessmentId  String
+  beneficiaryId String
+  score         Float?
+  competencyLevel String?
+  notes         String?
+  assessment    AcademicAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  beneficiary   Beneficiary        @relation(fields: [beneficiaryId], references: [id], onDelete: Cascade)
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  @@unique([assessmentId, beneficiaryId])
 }
