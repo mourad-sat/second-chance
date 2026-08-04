@@ -8,6 +8,7 @@ import {
   BriefcaseBusiness,
   CalendarCheck2,
   ClipboardCheck,
+  GitBranch,
   GraduationCap,
   HeartHandshake,
   LayoutDashboard,
@@ -27,7 +28,8 @@ const sections = [
     items: [
       { href: "/beneficiaries", label: "المستفيدون", icon: Users },
       { href: "/beneficiaries/new", label: "تسجيل مستفيد", icon: UserPlus },
-      { href: "/admissions", label: "التشخيص والقبول", icon: ClipboardCheck }
+      { href: "/admissions", label: "التشخيص والقبول", icon: ClipboardCheck },
+      { href: "/workflow", label: "سير الملفات", icon: GitBranch }
     ]
   },
   {
