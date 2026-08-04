@@ -7,180 +7,62 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum BeneficiaryStatus {
-  PRE_REGISTERED
-  UNDER_REVIEW
-  WAITLISTED
-  ACCEPTED
-  REJECTED
-  ENROLLED
-  WITHDRAWN
-  COMPLETED
-}
-
-enum AdmissionDecision {
-  PENDING
-  ACCEPTED
-  WAITLISTED
-  REJECTED
-  NEEDS_REASSESSMENT
-}
-
-enum AttendanceStatus {
-  PRESENT
-  ABSENT
-  LATE
-  EXCUSED
-}
-
-enum AssessmentType {
-  DIAGNOSTIC
-  FORMATIVE
-  SUMMATIVE
-  PROJECT
-  PRACTICAL
-}
-
-enum SocialFollowUpType {
-  INDIVIDUAL_INTERVIEW
-  FAMILY_VISIT
-  PHONE_CALL
-  MEDIATION
-  REFERRAL
-  MATERIAL_SUPPORT
-  PSYCHOLOGICAL_SUPPORT
-  OTHER
-}
-
-enum FollowUpPriority {
-  LOW
-  NORMAL
-  HIGH
-  URGENT
-}
-
-enum FollowUpStatus {
-  OPEN
-  IN_PROGRESS
-  COMPLETED
-  CANCELLED
-}
-
-enum SupportPlanStatus {
-  PLANNED
-  IN_PROGRESS
-  COMPLETED
-  SUSPENDED
-}
-
-enum SupportPlanPriority {
-  LOW
-  NORMAL
-  HIGH
-  URGENT
-}
-
-enum ActivityCategory {
-  REGISTRATION
-  DIAGNOSIS
-  ADMISSION
-  ATTENDANCE
-  ASSESSMENT
-  SUPPORT
-  SOCIAL
-  TRAINING
-  INTERNSHIP
-  INTEGRATION
-  DOCUMENT
-  NOTE
-}
-
-enum SkillLevel {
-  NOT_ASSESSED
-  BEGINNER
-  DEVELOPING
-  COMPETENT
-  ADVANCED
-}
-
-enum ProjectStatus {
-  IDEA
-  PLANNING
-  IN_PROGRESS
-  COMPLETED
-  SUSPENDED
-}
-
-enum InternshipStatus {
-  PLANNED
-  ACTIVE
-  COMPLETED
-  CANCELLED
-}
-
-enum UserRole {
-  SUPER_ADMIN
-  ASSOCIATION_MANAGER
-  PROGRAM_COORDINATOR
-  CENTER_MANAGER
-  FACILITATOR
-  SOCIAL_WORKER
-  VOCATIONAL_TRAINER
-  INTEGRATION_OFFICER
-  VIEWER
-}
-
-enum DocumentCategory {
-  IDENTITY
-  ENROLLMENT
-  EDUCATION
-  SOCIAL
-  TRAINING
-  INTERNSHIP
-  INTEGRATION
-  OTHER
-}
+enum BeneficiaryStatus { PRE_REGISTERED UNDER_REVIEW WAITLISTED ACCEPTED REJECTED ENROLLED WITHDRAWN COMPLETED }
+enum AdmissionDecision { PENDING ACCEPTED WAITLISTED REJECTED NEEDS_REASSESSMENT }
+enum AttendanceStatus { PRESENT ABSENT LATE EXCUSED }
+enum AssessmentType { DIAGNOSTIC FORMATIVE SUMMATIVE PROJECT PRACTICAL }
+enum SocialFollowUpType { INDIVIDUAL_INTERVIEW FAMILY_VISIT PHONE_CALL MEDIATION REFERRAL MATERIAL_SUPPORT PSYCHOLOGICAL_SUPPORT OTHER }
+enum FollowUpPriority { LOW NORMAL HIGH URGENT }
+enum FollowUpStatus { OPEN IN_PROGRESS COMPLETED CANCELLED }
+enum SupportPlanStatus { PLANNED IN_PROGRESS COMPLETED SUSPENDED }
+enum SupportPlanPriority { LOW NORMAL HIGH URGENT }
+enum ActivityCategory { REGISTRATION DIAGNOSIS ADMISSION ATTENDANCE ASSESSMENT SUPPORT SOCIAL TRAINING INTERNSHIP INTEGRATION DOCUMENT NOTE }
+enum SkillLevel { NOT_ASSESSED BEGINNER DEVELOPING COMPETENT ADVANCED }
+enum ProjectStatus { IDEA PLANNING IN_PROGRESS COMPLETED SUSPENDED }
+enum InternshipStatus { PLANNED ACTIVE COMPLETED CANCELLED }
+enum UserRole { SUPER_ADMIN ASSOCIATION_MANAGER PROGRAM_COORDINATOR CENTER_MANAGER FACILITATOR SOCIAL_WORKER VOCATIONAL_TRAINER INTEGRATION_OFFICER VIEWER }
+enum DocumentCategory { IDENTITY ENROLLMENT EDUCATION SOCIAL TRAINING INTERNSHIP INTEGRATION OTHER }
 
 model Beneficiary {
-  id                 String            @id @default(cuid())
-  firstName          String
-  lastName           String
-  birthDate          DateTime?
-  identityNumber     String?           @unique
-  phone              String?
-  guardianPhone      String?
-  address            String?
+  id String @id @default(cuid())
+  firstName String
+  lastName String
+  birthDate DateTime?
+  identityNumber String? @unique
+  phone String?
+  guardianPhone String?
+  address String?
   lastEducationLevel String?
-  status             BeneficiaryStatus @default(PRE_REGISTERED)
-  familySituation       String?
-  guardianName          String?
-  guardianRelationship  String?
-  householdSize         Int?
+  status BeneficiaryStatus @default(PRE_REGISTERED)
+  familySituation String?
+  guardianName String?
+  guardianRelationship String?
+  householdSize Int?
   familyIncomeSituation String?
-  housingSituation      String?
-  socialCoverage        String?
-  lastSchoolName       String?
-  dropoutYear          Int?
-  dropoutReasons       String?
+  housingSituation String?
+  socialCoverage String?
+  lastSchoolName String?
+  dropoutYear Int?
+  dropoutReasons String?
   learningDifficulties String?
-  specialNeeds         String?
+  specialNeeds String?
   diagnosticSummary String?
-  strengths         String?
-  priorityNeeds     String?
-  supportPlan       String?
-  careerGoal        String?
-  followUpNotes     String?
-  admissionAssessment  AdmissionAssessment?
-  enrollments          GroupEnrollment[]
-  attendanceRecords    AttendanceRecord[]
-  academicResults      AcademicResult[]
+  strengths String?
+  priorityNeeds String?
+  supportPlan String?
+  careerGoal String?
+  followUpNotes String?
+  admissionAssessment AdmissionAssessment?
+  enrollments GroupEnrollment[]
+  attendanceRecords AttendanceRecord[]
+  academicResults AcademicResult[]
   academicSupportPlans AcademicSupportPlan[]
-  socialFollowUps      SocialFollowUp[]
-  activityLogs         ActivityLog[]
-  skillEvaluations     SkillEvaluation[]
-  vocationalProjects   VocationalProject[]
-  internships          Internship[]
-  documents            Document[]
+  socialFollowUps SocialFollowUp[]
+  activityLogs ActivityLog[]
+  skillEvaluations SkillEvaluation[]
+  vocationalProjects VocationalProject[]
+  internships Internship[]
+  documents Document[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -462,7 +344,10 @@ model Document {
   fileName String
   mimeType String
   sizeBytes Int
-  data Bytes
+  data Bytes?
+  storageProvider String @default("DATABASE")
+  blobUrl String?
+  blobPathname String?
   notes String?
   uploadedById String?
   uploadedByName String?
@@ -470,6 +355,7 @@ model Document {
   updatedAt DateTime @updatedAt
   @@index([beneficiaryId, category])
   @@index([createdAt])
+  @@index([storageProvider])
 }
 
 model User {
