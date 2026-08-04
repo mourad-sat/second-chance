@@ -6,6 +6,7 @@ import { LogOut, Menu, Search } from "lucide-react";
 import { Sidebar } from "./Sidebar";
 import { NotificationBell } from "./NotificationBell";
 import { DashboardAnalytics } from "./DashboardAnalytics";
+import { ReportExplorer } from "./ReportExplorer";
 import { ROLE_LABELS } from "@/lib/permissions";
 
 type CurrentUser = { fullName: string; email: string; role: string };
@@ -93,6 +94,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <main className="p-4 md:p-8">
           {children}
           {pathname === "/" && <DashboardAnalytics />}
+          {pathname === "/reports" && <ReportExplorer />}
         </main>
       </div>
     </div>
