@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { AlertTriangle, Search, ShieldCheck, TrendingUp } from "lucide-react";
+import { AlertTriangle, History, Search, ShieldCheck, TrendingUp } from "lucide-react";
 
 type FollowUpItem = {
   id: string;
@@ -61,7 +61,7 @@ export function AcademicFollowUpTable({ items }: { items: FollowUpItem[] }) {
         <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div>
             <h2 className="text-xl font-bold text-slate-950">لوحة المتابعة الفردية</h2>
-            <p className="mt-1 text-sm text-slate-500">ابحث عن المستفيد، راقب مؤشرات الخطر، وافتح خطة الدعم لاتخاذ الإجراء المناسب.</p>
+            <p className="mt-1 text-sm text-slate-500">ابحث عن المستفيد، راقب مؤشرات الخطر، وافتح خطة الدعم أو السجل الزمني.</p>
           </div>
           <div className="grid gap-3 sm:grid-cols-3 xl:min-w-[680px]">
             <label className="relative block sm:col-span-1">
@@ -139,6 +139,9 @@ export function AcademicFollowUpTable({ items }: { items: FollowUpItem[] }) {
                   <td className="max-w-56 px-5 py-4 text-xs leading-6 text-slate-600">{item.lastSupport}</td>
                   <td className="px-5 py-4">
                     <div className="flex flex-col gap-2">
+                      <Link href={`/beneficiaries/${item.id}/timeline`} className="inline-flex items-center justify-center gap-1 rounded-lg bg-slate-950 px-3 py-2 text-xs font-bold text-white hover:bg-slate-800">
+                        <History size={14} /> السجل الزمني
+                      </Link>
                       <Link href={`/beneficiaries/${item.id}/support-plan`} className="inline-flex justify-center rounded-lg bg-blue-600 px-3 py-2 text-xs font-bold text-white hover:bg-blue-700">
                         خطة الدعم الفردية
                       </Link>
