@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { LucideIcon } from "lucide-react";
 import {
   AlertTriangle,
   BookOpenCheck,
@@ -14,6 +15,14 @@ import { AcademicFollowUpTable } from "@/components/AcademicFollowUpTable";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
+
+type RiskLevel = "LOW" | "MEDIUM" | "HIGH";
+type MetricCard = {
+  label: string;
+  value: string | number;
+  icon: LucideIcon;
+  style: string;
+};
 
 function percentage(value: number, total: number) {
   return total > 0 ? Math.round((value / total) * 100) : 0;
@@ -105,7 +114,7 @@ export default async function AcademicTrackingPage() {
     if ((beneficiary.admissionAssessment?.motivationLevel ?? 5) <= 2) riskScore += 1;
     if (!beneficiary.socialFollowUps[0] && riskScore >= 2) riskScore += 1;
 
-    const riskLevel = riskScore >= 5 ? "HIGH" : riskScore >= 2 ? "MEDIUM" : "LOW";
+    const riskLevel: RiskLevel = riskScore >= 5 ? "HIGH" : riskScore >= 2 ? "MEDIUM" : "LOW";
     const currentGroup = beneficiary.enrollments[0]?.group;
     const lastResult = beneficiary.academicResults[0];
     const lastFollowUp = beneficiary.socialFollowUps[0];
@@ -142,6 +151,15 @@ export default async function AcademicTrackingPage() {
     : 0;
   const readyForTraining = items.filter((item) => item.trainingReadiness >= 70).length;
 
+  const cards: MetricCard[] = [
+    { label: "المستفيدون المتابعون", value: items.length, icon: Users, style: "bg-blue-50 text-blue-700" },
+    { label: "متوسط الحضور", value: `${averageAttendance}%`, icon: CalendarCheck2, style: "bg-emerald-50 text-emerald-700" },
+    { label: "متوسط التقدم", value: `${averageProgress}%`, icon: TrendingUp, style: "bg-violet-50 text-violet-700" },
+    { label: "لديهم نتائج", value: withResults, icon: BookOpenCheck, style: "bg-sky-50 text-sky-700" },
+    { label: "جاهزون للتكوين", value: readyForTraining, icon: GraduationCap, style: "bg-teal-50 text-teal-700" },
+    { label: "خطر مرتفع", value: highRisk, icon: AlertTriangle, style: "bg-rose-50 text-rose-700" }
+  ];
+
   return (
     <AppShell>
       <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -163,15 +181,8 @@ export default async function AcademicTrackingPage() {
       </div>
 
       <section className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
-        {[
-          ["المستفيدون المتابعون", items.length, Users, "bg-blue-50 text-blue-700"],
-          ["متوسط الحضور", `${averageAttendance}%`, CalendarCheck2, "bg-emerald-50 text-emerald-700"],
-          ["متوسط التقدم", `${averageProgress}%`, TrendingUp, "bg-violet-50 text-violet-700"],
-          ["لديهم نتائج", withResults, BookOpenCheck, "bg-sky-50 text-sky-700"],
-          ["جاهزون للتكوين", readyForTraining, GraduationCap, "bg-teal-50 text-teal-700"],
-          ["خطر مرتفع", highRisk, AlertTriangle, "bg-rose-50 text-rose-700"]
-        ].map(([label, value, Icon, style]) => (
-          <article key={String(label)} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        {cards.map(({ label, value, icon: Icon, style }) => (
+          <article key={label} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <div className={`mb-4 inline-flex rounded-xl p-2.5 ${style}`}><Icon size={19} /></div>
             <p className="text-xs font-medium text-slate-500">{label}</p>
             <p className="mt-1 text-2xl font-bold text-slate-950">{value}</p>
