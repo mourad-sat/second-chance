@@ -21,12 +21,11 @@ export async function generateSmartNotifications(): Promise<SmartNotification[]>
   const sevenDays = new Date(now);
   sevenDays.setDate(sevenDays.getDate() + 7);
 
-  const [absences, overduePlans, overdueFollowUps, endingInternships] = await Promise.all([
+  const [absenceGroups, overduePlans, overdueFollowUps, endingInternships] = await Promise.all([
     prisma.attendanceRecord.groupBy({
       by: ["beneficiaryId"],
       where: { status: "ABSENT" },
-      _count: { _all: true },
-      having: { beneficiaryId: { _count: { gte: 5 } } }
+      _count: { beneficiaryId: true }
     }),
     prisma.academicSupportPlan.findMany({
       where: { reviewDate: { lt: now }, status: { in: ["PLANNED", "IN_PROGRESS"] } },
@@ -48,6 +47,7 @@ export async function generateSmartNotifications(): Promise<SmartNotification[]>
     })
   ]);
 
+  const absences = absenceGroups.filter((item) => item._count.beneficiaryId >= 5);
   const absenceIds = absences.map((item) => item.beneficiaryId);
   const absenceBeneficiaries = absenceIds.length
     ? await prisma.beneficiary.findMany({
@@ -56,13 +56,12 @@ export async function generateSmartNotifications(): Promise<SmartNotification[]>
       })
     : [];
   const absenceMap = new Map(absenceBeneficiaries.map((item) => [item.id, item]));
-
   const notifications: SmartNotification[] = [];
 
   for (const item of absences) {
     const beneficiary = absenceMap.get(item.beneficiaryId);
     if (!beneficiary) continue;
-    const count = item._count._all;
+    const count = item._count.beneficiaryId;
     notifications.push({
       id: `attendance-${item.beneficiaryId}-${count}`,
       type: "ATTENDANCE",
