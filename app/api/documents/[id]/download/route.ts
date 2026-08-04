@@ -41,7 +41,7 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
     return NextResponse.json({ message: "محتوى الوثيقة غير متوفر." }, { status: 404 });
   }
 
-  return new NextResponse(document.data, {
+  return new NextResponse(new Uint8Array(document.data), {
     headers: {
       "Content-Type": document.mimeType,
       "Content-Disposition": `inline; filename="${safeFileName(document.fileName)}"`,
