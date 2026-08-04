@@ -4,20 +4,9 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Bell, LogOut, Menu, Search } from "lucide-react";
 import { Sidebar } from "./Sidebar";
+import { ROLE_LABELS } from "@/lib/permissions";
 
 type CurrentUser = { fullName: string; email: string; role: string };
-
-const roleLabels: Record<string, string> = {
-  SUPER_ADMIN: "مدير النظام",
-  ASSOCIATION_MANAGER: "مدير الجمعية",
-  PROGRAM_COORDINATOR: "منسق البرنامج",
-  CENTER_MANAGER: "مدير المركز",
-  FACILITATOR: "المنشط التربوي",
-  SOCIAL_WORKER: "الأخصائي الاجتماعي",
-  VOCATIONAL_TRAINER: "المكون المهني",
-  INTEGRATION_OFFICER: "مسؤول الإدماج",
-  VIEWER: "قارئ فقط"
-};
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -37,13 +26,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     router.refresh();
   }
 
+  const role = user?.role || "VIEWER";
+
   return (
     <div className="min-h-screen bg-slate-100 lg:flex">
-      <Sidebar />
+      <Sidebar role={role} />
       {menuOpen && (
         <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="القائمة الرئيسية">
           <button className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm" onClick={() => setMenuOpen(false)} aria-label="إغلاق القائمة" />
-          <div className="relative h-full w-fit shadow-2xl"><Sidebar mobile onClose={() => setMenuOpen(false)} /></div>
+          <div className="relative h-full w-fit shadow-2xl"><Sidebar role={role} mobile onClose={() => setMenuOpen(false)} /></div>
         </div>
       )}
 
@@ -63,7 +54,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-900 text-sm font-bold text-white">{user?.fullName?.charAt(0) || "م"}</div>
               <div className="hidden text-right sm:block">
                 <p className="text-sm font-semibold text-slate-800">{user?.fullName || "المستخدم"}</p>
-                <p className="text-xs text-slate-500">{user ? roleLabels[user.role] || user.role : "جارٍ التحميل"}</p>
+                <p className="text-xs text-slate-500">{user ? ROLE_LABELS[user.role] || user.role : "جارٍ التحميل"}</p>
               </div>
             </div>
             <button onClick={logout} className="rounded-xl border border-slate-200 p-2.5 text-slate-600 hover:bg-red-50 hover:text-red-700" aria-label="تسجيل الخروج"><LogOut size={19} /></button>
