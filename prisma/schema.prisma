@@ -118,6 +118,18 @@ enum InternshipStatus {
   CANCELLED
 }
 
+enum UserRole {
+  SUPER_ADMIN
+  ASSOCIATION_MANAGER
+  PROGRAM_COORDINATOR
+  CENTER_MANAGER
+  FACILITATOR
+  SOCIAL_WORKER
+  VOCATIONAL_TRAINER
+  INTEGRATION_OFFICER
+  VIEWER
+}
+
 model Beneficiary {
   id                 String            @id @default(cuid())
   firstName          String
@@ -129,7 +141,6 @@ model Beneficiary {
   address            String?
   lastEducationLevel String?
   status             BeneficiaryStatus @default(PRE_REGISTERED)
-
   familySituation       String?
   guardianName          String?
   guardianRelationship  String?
@@ -137,20 +148,17 @@ model Beneficiary {
   familyIncomeSituation String?
   housingSituation      String?
   socialCoverage        String?
-
   lastSchoolName       String?
   dropoutYear          Int?
   dropoutReasons       String?
   learningDifficulties String?
   specialNeeds         String?
-
   diagnosticSummary String?
   strengths         String?
   priorityNeeds     String?
   supportPlan       String?
   careerGoal        String?
   followUpNotes     String?
-
   admissionAssessment  AdmissionAssessment?
   enrollments          GroupEnrollment[]
   attendanceRecords    AttendanceRecord[]
@@ -161,15 +169,14 @@ model Beneficiary {
   skillEvaluations     SkillEvaluation[]
   vocationalProjects   VocationalProject[]
   internships          Internship[]
-
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
 model AdmissionAssessment {
-  id            String      @id @default(cuid())
-  beneficiaryId String      @unique
-  beneficiary   Beneficiary @relation(fields: [beneficiaryId], references: [id], onDelete: Cascade)
+  id String @id @default(cuid())
+  beneficiaryId String @unique
+  beneficiary Beneficiary @relation(fields: [beneficiaryId], references: [id], onDelete: Cascade)
   interviewDate DateTime?
   interviewerName String?
   interviewSummary String?
@@ -432,4 +439,33 @@ model Internship {
   beneficiary Beneficiary @relation(fields: [beneficiaryId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model User {
+  id String @id @default(cuid())
+  fullName String
+  email String @unique
+  passwordHash String
+  role UserRole @default(VIEWER)
+  centerName String?
+  isActive Boolean @default(true)
+  lastLoginAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  auditLogs AuditLog[]
+  @@index([role, isActive])
+}
+
+model AuditLog {
+  id String @id @default(cuid())
+  userId String?
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action String
+  entityType String?
+  entityId String?
+  description String?
+  ipAddress String?
+  createdAt DateTime @default(now())
+  @@index([userId, createdAt])
+  @@index([action, createdAt])
 }
