@@ -1,3 +1,4 @@
+import { del } from "@vercel/blob";
 import { NextResponse } from "next/server";
 import { currentSession } from "@/lib/auth-server";
 import { prisma } from "@/lib/prisma";
@@ -34,6 +35,14 @@ export async function DELETE(_: Request, { params }: { params: { id: string } })
         }
       })
     ]);
+
+    if (document.storageProvider === "VERCEL_BLOB" && document.blobUrl) {
+      try {
+        await del(document.blobUrl);
+      } catch (blobError) {
+        console.error("Document metadata deleted but blob cleanup failed", blobError);
+      }
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {
