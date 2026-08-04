@@ -6,6 +6,8 @@ export const metadata = {
   description: "استمارة التسجيل القبلي الخارجية للاستفادة من برنامج الفرصة الثانية."
 };
 
+export const dynamic = "force-dynamic";
+
 export default function PublicRegistrationPage() {
   return (
     <main dir="rtl" className="min-h-screen bg-slate-100 px-4 py-8 sm:py-12">
