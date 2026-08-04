@@ -43,10 +43,6 @@ export async function POST(request: Request) {
     const session = await currentSession();
     if (!session) return NextResponse.json({ message: "يجب تسجيل الدخول أولًا." }, { status: 401 });
 
-    if (!process.env.BLOB_READ_WRITE_TOKEN) {
-      return NextResponse.json({ message: "لم يتم إعداد مخزن Vercel Blob بعد." }, { status: 503 });
-    }
-
     const form = await request.formData();
     const file = form.get("file");
     const beneficiaryId = String(form.get("beneficiaryId") || "").trim();
@@ -124,6 +120,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ id: document.id }, { status: 201 });
   } catch (error) {
     console.error(error, uploadedBlobUrl ? `Orphan blob may require cleanup: ${uploadedBlobUrl}` : "");
-    return NextResponse.json({ message: "تعذر رفع الوثيقة إلى التخزين الخارجي." }, { status: 500 });
+    return NextResponse.json({ message: "تعذر رفع الوثيقة إلى التخزين الخارجي. تحقق من اتصال Blob وأعد المحاولة." }, { status: 500 });
   }
 }
