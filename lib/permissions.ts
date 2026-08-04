@@ -12,26 +12,25 @@ export const ROLE_LABELS: Record<string, string> = {
 
 const rolePaths: Record<string, string[]> = {
   PROGRAM_COORDINATOR: [
-    "/", "/beneficiaries", "/admissions", "/workflow", "/attendance",
-    "/academic-tracking", "/social-support", "/vocational-training",
-    "/integration", "/reports"
+    "/", "/notifications", "/beneficiaries", "/admissions", "/workflow", "/attendance",
+    "/academic-tracking", "/social-support", "/vocational-training", "/integration", "/reports"
   ],
   CENTER_MANAGER: [
-    "/", "/beneficiaries", "/admissions", "/workflow", "/attendance",
+    "/", "/notifications", "/beneficiaries", "/admissions", "/workflow", "/attendance",
     "/academic-tracking", "/social-support", "/reports"
   ],
-  FACILITATOR: ["/", "/beneficiaries", "/attendance", "/academic-tracking"],
-  SOCIAL_WORKER: ["/", "/beneficiaries", "/social-support"],
-  VOCATIONAL_TRAINER: ["/", "/beneficiaries", "/vocational-training"],
-  INTEGRATION_OFFICER: ["/", "/beneficiaries", "/vocational-training", "/integration"],
+  FACILITATOR: ["/", "/notifications", "/beneficiaries", "/attendance", "/academic-tracking"],
+  SOCIAL_WORKER: ["/", "/notifications", "/beneficiaries", "/social-support"],
+  VOCATIONAL_TRAINER: ["/", "/notifications", "/beneficiaries", "/vocational-training"],
+  INTEGRATION_OFFICER: ["/", "/notifications", "/beneficiaries", "/vocational-training", "/integration"],
   VIEWER: [
-    "/", "/beneficiaries", "/admissions", "/workflow", "/attendance",
-    "/academic-tracking", "/social-support", "/vocational-training",
-    "/integration", "/reports"
+    "/", "/notifications", "/beneficiaries", "/admissions", "/workflow", "/attendance",
+    "/academic-tracking", "/social-support", "/vocational-training", "/integration", "/reports"
   ]
 };
 
 const apiToPage: [string, string][] = [
+  ["/api/notifications", "/notifications"],
   ["/api/beneficiaries", "/beneficiaries"],
   ["/api/admission-assessment", "/admissions"],
   ["/api/admissions", "/admissions"],
