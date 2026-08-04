@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Bell, LogOut, Menu, Search } from "lucide-react";
+import { LogOut, Menu, Search } from "lucide-react";
 import { Sidebar } from "./Sidebar";
+import { NotificationBell } from "./NotificationBell";
 import { ROLE_LABELS } from "@/lib/permissions";
 
 type CurrentUser = { fullName: string; email: string; role: string };
@@ -49,7 +50,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="flex items-center gap-3">
-            <button className="relative rounded-xl border border-slate-200 p-2.5 text-slate-600" aria-label="الإشعارات"><Bell size={19} /><span className="absolute left-2 top-2 h-2 w-2 rounded-full bg-amber-500 ring-2 ring-white" /></button>
+            <NotificationBell />
             <div className="flex items-center gap-3 rounded-xl border border-slate-200 px-3 py-2">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-900 text-sm font-bold text-white">{user?.fullName?.charAt(0) || "م"}</div>
               <div className="hidden text-right sm:block">
