@@ -2,6 +2,7 @@
 
 import { FormEvent, ReactNode, useState } from "react";
 import { useRouter } from "next/navigation";
+import { ChevronDown, Save } from "lucide-react";
 
 const statuses = [
   ["PRE_REGISTERED", "مسجل أوليًا"],
@@ -45,15 +46,23 @@ type BeneficiaryData = {
   followUpNotes: string | null;
 };
 
-function Section({ title, description, children }: { title: string; description: string; children: ReactNode }) {
+function Section({ title, description, children, defaultOpen = false }: {
+  title: string;
+  description: string;
+  children: ReactNode;
+  defaultOpen?: boolean;
+}) {
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-      <div className="mb-6 border-b border-slate-100 pb-4">
-        <h3 className="text-xl font-bold">{title}</h3>
-        <p className="mt-1 text-sm text-slate-500">{description}</p>
-      </div>
-      {children}
-    </section>
+    <details open={defaultOpen} className="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-6 py-5 hover:bg-slate-50">
+        <div>
+          <h3 className="text-lg font-bold text-slate-900">{title}</h3>
+          <p className="mt-1 text-sm text-slate-500">{description}</p>
+        </div>
+        <ChevronDown className="shrink-0 text-slate-400 transition group-open:rotate-180" size={20} />
+      </summary>
+      <div className="border-t border-slate-100 p-6">{children}</div>
+    </details>
   );
 }
 
@@ -64,12 +73,12 @@ const Field = ({ label, name, defaultValue = "", type = "text" }: {
   type?: string;
 }) => (
   <label className="block">
-    <span className="mb-2 block text-sm font-medium">{label}</span>
+    <span className="mb-2 block text-sm font-medium text-slate-700">{label}</span>
     <input
       name={name}
       type={type}
       defaultValue={defaultValue}
-      className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-slate-700"
+      className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
     />
   </label>
 );
@@ -81,12 +90,12 @@ const TextArea = ({ label, name, defaultValue = "", rows = 4 }: {
   rows?: number;
 }) => (
   <label className="block">
-    <span className="mb-2 block text-sm font-medium">{label}</span>
+    <span className="mb-2 block text-sm font-medium text-slate-700">{label}</span>
     <textarea
       name={name}
       rows={rows}
       defaultValue={defaultValue}
-      className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-slate-700"
+      className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
     />
   </label>
 );
@@ -95,6 +104,7 @@ export function BeneficiaryProfileForm({ beneficiary }: { beneficiary: Beneficia
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const [messageType, setMessageType] = useState<"success" | "error" | "">("");
   const birthDate = beneficiary.birthDate
     ? new Date(beneficiary.birthDate).toISOString().slice(0, 10)
     : "";
@@ -103,6 +113,7 @@ export function BeneficiaryProfileForm({ beneficiary }: { beneficiary: Beneficia
     event.preventDefault();
     setSaving(true);
     setMessage("");
+    setMessageType("");
 
     const payload = Object.fromEntries(new FormData(event.currentTarget).entries());
 
@@ -117,17 +128,19 @@ export function BeneficiaryProfileForm({ beneficiary }: { beneficiary: Beneficia
       if (!response.ok) throw new Error(result.message || "تعذر تحديث الملف.");
 
       setMessage("تم تحديث ملف المستفيد بنجاح.");
+      setMessageType("success");
       router.refresh();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "حدث خطأ غير متوقع.");
+      setMessageType("error");
     } finally {
       setSaving(false);
     }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <Section title="البيانات الأساسية" description="معلومات الهوية والاتصال والوضعية الحالية داخل البرنامج.">
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <Section title="البيانات الأساسية" description="معلومات الهوية والاتصال والوضعية الحالية داخل البرنامج." defaultOpen>
         <div className="grid gap-5 md:grid-cols-2">
           <Field label="الاسم العائلي" name="lastName" defaultValue={beneficiary.lastName} />
           <Field label="الاسم الشخصي" name="firstName" defaultValue={beneficiary.firstName} />
@@ -138,8 +151,8 @@ export function BeneficiaryProfileForm({ beneficiary }: { beneficiary: Beneficia
           <Field label="العنوان" name="address" defaultValue={beneficiary.address || ""} />
           <Field label="آخر مستوى دراسي" name="lastEducationLevel" defaultValue={beneficiary.lastEducationLevel || ""} />
           <label className="block md:col-span-2">
-            <span className="mb-2 block text-sm font-medium">وضعية المستفيد</span>
-            <select name="status" defaultValue={beneficiary.status} className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3">
+            <span className="mb-2 block text-sm font-medium text-slate-700">وضعية المستفيد</span>
+            <select name="status" defaultValue={beneficiary.status} className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10">
               {statuses.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
             </select>
           </label>
@@ -181,10 +194,15 @@ export function BeneficiaryProfileForm({ beneficiary }: { beneficiary: Beneficia
         </div>
       </Section>
 
-      {message && <p className="rounded-xl bg-slate-100 px-4 py-3 text-sm">{message}</p>}
+      {message && (
+        <p className={`rounded-xl border px-4 py-3 text-sm ${messageType === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-red-200 bg-red-50 text-red-800"}`} role="status">
+          {message}
+        </p>
+      )}
 
-      <div className="sticky bottom-4 flex justify-end">
-        <button disabled={saving} className="rounded-xl bg-slate-900 px-7 py-3 text-white shadow-lg disabled:opacity-60">
+      <div className="sticky bottom-4 z-10 flex justify-end rounded-2xl border border-slate-200 bg-white/95 p-3 shadow-xl backdrop-blur">
+        <button disabled={saving} className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-7 py-3 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60">
+          <Save size={18} />
           {saving ? "جارٍ الحفظ..." : "حفظ جميع التعديلات"}
         </button>
       </div>
