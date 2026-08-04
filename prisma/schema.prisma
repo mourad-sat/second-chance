@@ -80,6 +80,21 @@ enum SupportPlanPriority {
   URGENT
 }
 
+enum ActivityCategory {
+  REGISTRATION
+  DIAGNOSIS
+  ADMISSION
+  ATTENDANCE
+  ASSESSMENT
+  SUPPORT
+  SOCIAL
+  TRAINING
+  INTERNSHIP
+  INTEGRATION
+  DOCUMENT
+  NOTE
+}
+
 enum SkillLevel {
   NOT_ASSESSED
   BEGINNER
@@ -136,15 +151,16 @@ model Beneficiary {
   careerGoal        String?
   followUpNotes     String?
 
-  admissionAssessment AdmissionAssessment?
-  enrollments         GroupEnrollment[]
-  attendanceRecords   AttendanceRecord[]
-  academicResults     AcademicResult[]
+  admissionAssessment  AdmissionAssessment?
+  enrollments          GroupEnrollment[]
+  attendanceRecords    AttendanceRecord[]
+  academicResults      AcademicResult[]
   academicSupportPlans AcademicSupportPlan[]
-  socialFollowUps     SocialFollowUp[]
-  skillEvaluations    SkillEvaluation[]
-  vocationalProjects  VocationalProject[]
-  internships         Internship[]
+  socialFollowUps      SocialFollowUp[]
+  activityLogs         ActivityLog[]
+  skillEvaluations     SkillEvaluation[]
+  vocationalProjects   VocationalProject[]
+  internships          Internship[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -297,6 +313,24 @@ model SocialFollowUp {
   updatedAt DateTime @updatedAt
   @@index([status, priority])
   @@index([eventDate])
+}
+
+model ActivityLog {
+  id String @id @default(cuid())
+  beneficiaryId String
+  beneficiary Beneficiary @relation(fields: [beneficiaryId], references: [id], onDelete: Cascade)
+  category ActivityCategory
+  title String
+  description String?
+  actorName String?
+  referenceType String?
+  referenceId String?
+  referenceHref String?
+  eventDate DateTime @default(now())
+  metadata Json?
+  createdAt DateTime @default(now())
+  @@index([beneficiaryId, eventDate])
+  @@index([category, eventDate])
 }
 
 model VocationalProgram {
