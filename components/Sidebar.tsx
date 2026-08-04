@@ -17,6 +17,7 @@ import {
   Users,
   X
 } from "lucide-react";
+import { visibleForRole } from "@/lib/permissions";
 
 const sections = [
   {
@@ -54,10 +55,14 @@ const sections = [
 type SidebarProps = {
   mobile?: boolean;
   onClose?: () => void;
+  role?: string;
 };
 
-export function Sidebar({ mobile = false, onClose }: SidebarProps) {
+export function Sidebar({ mobile = false, onClose, role = "VIEWER" }: SidebarProps) {
   const pathname = usePathname();
+  const visibleSections = sections
+    .map((section) => ({ ...section, items: section.items.filter((item) => visibleForRole(role, item.href)) }))
+    .filter((section) => section.items.length > 0);
 
   return (
     <aside
@@ -78,11 +83,9 @@ export function Sidebar({ mobile = false, onClose }: SidebarProps) {
       </div>
 
       <nav className="space-y-7">
-        {sections.map((section) => (
+        {visibleSections.map((section) => (
           <section key={section.title}>
-            <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-              {section.title}
-            </p>
+            <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">{section.title}</p>
             <div className="space-y-1">
               {section.items.map(({ href, label, icon: Icon }) => {
                 const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
@@ -92,11 +95,7 @@ export function Sidebar({ mobile = false, onClose }: SidebarProps) {
                     href={href}
                     onClick={onClose}
                     aria-current={active ? "page" : undefined}
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition ${
-                      active
-                        ? "bg-blue-600 text-white shadow-lg shadow-blue-950/30"
-                        : "text-slate-300 hover:bg-white/5 hover:text-white"
-                    }`}
+                    className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition ${active ? "bg-blue-600 text-white shadow-lg shadow-blue-950/30" : "text-slate-300 hover:bg-white/5 hover:text-white"}`}
                   >
                     <Icon size={18} />
                     <span>{label}</span>
