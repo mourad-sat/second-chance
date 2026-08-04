@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { LogOut, Menu, Search } from "lucide-react";
 import { Sidebar } from "./Sidebar";
 import { NotificationBell } from "./NotificationBell";
+import { DashboardAnalytics } from "./DashboardAnalytics";
 import { ROLE_LABELS } from "@/lib/permissions";
 
 type CurrentUser = { fullName: string; email: string; role: string };
@@ -89,7 +90,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <button onClick={logout} className="rounded-xl border border-slate-200 p-2.5 text-slate-600 hover:bg-red-50 hover:text-red-700" aria-label="تسجيل الخروج"><LogOut size={19} /></button>
           </div>
         </header>
-        <main className="p-4 md:p-8">{children}</main>
+        <main className="p-4 md:p-8">
+          {children}
+          {pathname === "/" && <DashboardAnalytics />}
+        </main>
       </div>
     </div>
   );
