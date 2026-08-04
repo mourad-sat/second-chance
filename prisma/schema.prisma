@@ -130,6 +130,17 @@ enum UserRole {
   VIEWER
 }
 
+enum DocumentCategory {
+  IDENTITY
+  ENROLLMENT
+  EDUCATION
+  SOCIAL
+  TRAINING
+  INTERNSHIP
+  INTEGRATION
+  OTHER
+}
+
 model Beneficiary {
   id                 String            @id @default(cuid())
   firstName          String
@@ -169,6 +180,7 @@ model Beneficiary {
   skillEvaluations     SkillEvaluation[]
   vocationalProjects   VocationalProject[]
   internships          Internship[]
+  documents            Document[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -439,6 +451,25 @@ model Internship {
   beneficiary Beneficiary @relation(fields: [beneficiaryId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Document {
+  id String @id @default(cuid())
+  beneficiaryId String
+  beneficiary Beneficiary @relation(fields: [beneficiaryId], references: [id], onDelete: Cascade)
+  title String
+  category DocumentCategory @default(OTHER)
+  fileName String
+  mimeType String
+  sizeBytes Int
+  data Bytes
+  notes String?
+  uploadedById String?
+  uploadedByName String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([beneficiaryId, category])
+  @@index([createdAt])
 }
 
 model User {
