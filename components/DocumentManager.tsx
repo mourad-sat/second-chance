@@ -16,6 +16,11 @@ type DocumentItem = {
   createdAt: string;
 };
 
+type ApiResult = { message?: string; documents?: DocumentItem[] };
+
+const MAX_FILE_SIZE = 4 * 1024 * 1024;
+const ALLOWED_TYPES = new Set(["application/pdf", "image/png", "image/jpeg", "image/webp"]);
+
 const categoryLabels: Record<string, string> = {
   IDENTITY: "وثائق الهوية",
   ENROLLMENT: "التسجيل والالتزام",
@@ -33,6 +38,21 @@ function formatSize(bytes: number) {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
+async function readApiResult(response: Response): Promise<ApiResult> {
+  const contentType = response.headers.get("content-type") || "";
+
+  if (contentType.includes("application/json")) {
+    return response.json() as Promise<ApiResult>;
+  }
+
+  const text = await response.text();
+  if (response.status === 413 || /request entity too large|payload too large/i.test(text)) {
+    return { message: "حجم الملف أكبر من الحد المسموح. اختر ملفًا لا يتجاوز 4 ميغابايت." };
+  }
+
+  return { message: text.trim() || "تعذر تنفيذ العملية." };
+}
+
 export function DocumentManager({ beneficiaryId, initialDocuments, canWrite }: { beneficiaryId: string; initialDocuments: DocumentItem[]; canWrite: boolean }) {
   const router = useRouter();
   const [documents, setDocuments] = useState(initialDocuments);
@@ -43,19 +63,43 @@ export function DocumentManager({ beneficiaryId, initialDocuments, canWrite }: {
   async function upload(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
-    setSaving(true);
+    const fileInput = form.elements.namedItem("file") as HTMLInputElement | null;
+    const file = fileInput?.files?.[0];
+
     setMessage("");
     setIsError(false);
+
+    if (!file) {
+      setIsError(true);
+      setMessage("اختر ملفًا لرفعه.");
+      return;
+    }
+
+    if (!ALLOWED_TYPES.has(file.type)) {
+      setIsError(true);
+      setMessage("يسمح فقط بملفات PDF وصور PNG وJPG وWEBP.");
+      return;
+    }
+
+    if (file.size > MAX_FILE_SIZE) {
+      setIsError(true);
+      setMessage(`حجم الملف ${formatSize(file.size)}. الحد الأقصى المسموح هو 4 ميغابايت.`);
+      return;
+    }
+
+    setSaving(true);
 
     try {
       const payload = new FormData(form);
       payload.set("beneficiaryId", beneficiaryId);
       const response = await fetch("/api/documents", { method: "POST", body: payload });
-      const result = await response.json();
+      const result = await readApiResult(response);
       if (!response.ok) throw new Error(result.message || "تعذر رفع الوثيقة.");
 
       const refreshed = await fetch(`/api/documents?beneficiaryId=${encodeURIComponent(beneficiaryId)}`, { cache: "no-store" });
-      const data = await refreshed.json();
+      const data = await readApiResult(refreshed);
+      if (!refreshed.ok) throw new Error(data.message || "تم الرفع، لكن تعذر تحديث قائمة الوثائق.");
+
       setDocuments(data.documents || []);
       form.reset();
       setMessage("تم رفع الوثيقة إلى التخزين الخارجي بنجاح.");
@@ -71,17 +115,20 @@ export function DocumentManager({ beneficiaryId, initialDocuments, canWrite }: {
   async function remove(id: string) {
     if (!window.confirm("هل تريد حذف هذه الوثيقة نهائيًا؟")) return;
     setMessage("");
-    const response = await fetch(`/api/documents/${id}`, { method: "DELETE" });
-    const result = await response.json();
-    if (!response.ok) {
+
+    try {
+      const response = await fetch(`/api/documents/${id}`, { method: "DELETE" });
+      const result = await readApiResult(response);
+      if (!response.ok) throw new Error(result.message || "تعذر حذف الوثيقة.");
+
+      setDocuments((current) => current.filter((item) => item.id !== id));
+      setIsError(false);
+      setMessage("تم حذف الوثيقة.");
+      router.refresh();
+    } catch (error) {
       setIsError(true);
-      setMessage(result.message || "تعذر حذف الوثيقة.");
-      return;
+      setMessage(error instanceof Error ? error.message : "تعذر حذف الوثيقة.");
     }
-    setDocuments((current) => current.filter((item) => item.id !== id));
-    setIsError(false);
-    setMessage("تم حذف الوثيقة.");
-    router.refresh();
   }
 
   const inputClass = "w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100";
