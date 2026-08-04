@@ -2,7 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { canAccessPath } from "@/lib/permissions";
 import { SESSION_COOKIE, verifySessionToken } from "@/lib/session";
 
-const publicPaths = ["/login", "/setup", "/api/auth/login", "/api/auth/setup"];
+const publicPaths = [
+  "/login",
+  "/setup",
+  "/register",
+  "/api/auth/login",
+  "/api/auth/setup",
+  "/api/public-registration"
+];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
