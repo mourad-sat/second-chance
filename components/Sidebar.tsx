@@ -7,6 +7,7 @@ import {
   BookOpenCheck,
   BriefcaseBusiness,
   CalendarCheck2,
+  ClipboardCheck,
   GraduationCap,
   HeartHandshake,
   LayoutDashboard,
@@ -25,7 +26,8 @@ const sections = [
     title: "إدارة المستفيدين",
     items: [
       { href: "/beneficiaries", label: "المستفيدون", icon: Users },
-      { href: "/beneficiaries/new", label: "تسجيل مستفيد", icon: UserPlus }
+      { href: "/beneficiaries/new", label: "تسجيل مستفيد", icon: UserPlus },
+      { href: "/admissions", label: "التشخيص والقبول", icon: ClipboardCheck }
     ]
   },
   {
