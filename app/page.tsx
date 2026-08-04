@@ -56,7 +56,10 @@ export default async function DashboardPage() {
       <div className="mx-auto max-w-7xl">
         <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="mb-2 text-sm font-semibold text-blue-600">لوحة القيادة التنفيذية</p>
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              <p className="text-sm font-semibold text-blue-600">لوحة القيادة التنفيذية</p>
+              <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700">واجهة حديثة · V1.1</span>
+            </div>
             <h2 className="text-3xl font-bold tracking-tight text-slate-900">مرحبًا بك في منصة الفرصة الثانية</h2>
             <p className="mt-2 text-slate-500">نظرة موحدة على التسجيل والتتبع التربوي والاجتماعي والمهني.</p>
           </div>
