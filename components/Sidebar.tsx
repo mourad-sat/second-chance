@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   BarChart3,
+  BellRing,
   BookOpenCheck,
   BriefcaseBusiness,
   CalendarCheck2,
@@ -22,7 +23,10 @@ import { visibleForRole } from "@/lib/permissions";
 const sections = [
   {
     title: "الرئيسية",
-    items: [{ href: "/", label: "لوحة القيادة", icon: LayoutDashboard }]
+    items: [
+      { href: "/", label: "لوحة القيادة", icon: LayoutDashboard },
+      { href: "/notifications", label: "مركز الإشعارات", icon: BellRing }
+    ]
   },
   {
     title: "إدارة المستفيدين",
@@ -52,11 +56,7 @@ const sections = [
   }
 ];
 
-type SidebarProps = {
-  mobile?: boolean;
-  onClose?: () => void;
-  role?: string;
-};
+type SidebarProps = { mobile?: boolean; onClose?: () => void; role?: string };
 
 export function Sidebar({ mobile = false, onClose, role = "VIEWER" }: SidebarProps) {
   const pathname = usePathname();
@@ -65,18 +65,11 @@ export function Sidebar({ mobile = false, onClose, role = "VIEWER" }: SidebarPro
     .filter((section) => section.items.length > 0);
 
   return (
-    <aside
-      className={`${mobile ? "h-full w-72" : "sticky top-0 hidden h-screen w-72 lg:block"} shrink-0 overflow-y-auto bg-slate-950 px-4 py-6 text-white`}
-      aria-label="القائمة الرئيسية"
-    >
+    <aside className={`${mobile ? "h-full w-72" : "sticky top-0 hidden h-screen w-72 lg:block"} shrink-0 overflow-y-auto bg-slate-950 px-4 py-6 text-white`} aria-label="القائمة الرئيسية">
       <div className="mb-8 rounded-2xl bg-white/5 p-4 ring-1 ring-white/10">
         <div className="mb-3 flex items-start justify-between gap-3">
           <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-500 font-bold">ف2</div>
-          {mobile && (
-            <button onClick={onClose} className="rounded-lg p-2 text-slate-300 hover:bg-white/10" aria-label="إغلاق القائمة">
-              <X size={20} />
-            </button>
-          )}
+          {mobile && <button onClick={onClose} className="rounded-lg p-2 text-slate-300 hover:bg-white/10" aria-label="إغلاق القائمة"><X size={20} /></button>}
         </div>
         <h1 className="text-lg font-bold">منصة الفرصة الثانية</h1>
         <p className="mt-1 text-xs leading-5 text-slate-400">التدبير التربوي والاجتماعي والمهني</p>
@@ -90,15 +83,8 @@ export function Sidebar({ mobile = false, onClose, role = "VIEWER" }: SidebarPro
               {section.items.map(({ href, label, icon: Icon }) => {
                 const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
                 return (
-                  <Link
-                    key={href}
-                    href={href}
-                    onClick={onClose}
-                    aria-current={active ? "page" : undefined}
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition ${active ? "bg-blue-600 text-white shadow-lg shadow-blue-950/30" : "text-slate-300 hover:bg-white/5 hover:text-white"}`}
-                  >
-                    <Icon size={18} />
-                    <span>{label}</span>
+                  <Link key={href} href={href} onClick={onClose} aria-current={active ? "page" : undefined} className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition ${active ? "bg-blue-600 text-white shadow-lg shadow-blue-950/30" : "text-slate-300 hover:bg-white/5 hover:text-white"}`}>
+                    <Icon size={18} /><span>{label}</span>
                   </Link>
                 );
               })}
@@ -108,8 +94,7 @@ export function Sidebar({ mobile = false, onClose, role = "VIEWER" }: SidebarPro
       </nav>
 
       <div className="mt-8 rounded-2xl bg-blue-600/15 p-4 text-xs leading-6 text-blue-100 ring-1 ring-blue-500/20">
-        <p className="font-semibold">الإصدار الأول</p>
-        <p className="text-blue-200/70">بيئة الاختبار والتطوير المستمر</p>
+        <p className="font-semibold">الإصدار الأول</p><p className="text-blue-200/70">بيئة الاختبار والتطوير المستمر</p>
       </div>
     </aside>
   );
