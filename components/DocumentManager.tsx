@@ -58,7 +58,7 @@ export function DocumentManager({ beneficiaryId, initialDocuments, canWrite }: {
       const data = await refreshed.json();
       setDocuments(data.documents || []);
       form.reset();
-      setMessage("تم رفع الوثيقة بنجاح.");
+      setMessage("تم رفع الوثيقة إلى التخزين الخارجي بنجاح.");
       router.refresh();
     } catch (error) {
       setIsError(true);
@@ -92,7 +92,7 @@ export function DocumentManager({ beneficiaryId, initialDocuments, canWrite }: {
         <form onSubmit={upload} className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
           <div className="mb-5 flex items-center gap-3">
             <div className="rounded-xl bg-blue-50 p-3 text-blue-600"><UploadCloud size={22} /></div>
-            <div><h2 className="text-xl font-bold">رفع وثيقة جديدة</h2><p className="mt-1 text-sm text-slate-500">PDF أو صورة، بحد أقصى 8 ميغابايت.</p></div>
+            <div><h2 className="text-xl font-bold">رفع وثيقة جديدة</h2><p className="mt-1 text-sm text-slate-500">PDF أو صورة إلى Vercel Blob الخاص، بحد أقصى 4 ميغابايت.</p></div>
           </div>
           <div className="grid gap-4 md:grid-cols-2">
             <label><span className="mb-2 block text-sm font-medium">عنوان الوثيقة</span><input required name="title" className={inputClass} placeholder="مثال: نسخة البطاقة الوطنية" /></label>
