@@ -1,15 +1,38 @@
+"use client";
+
 import Link from "next/link";
+import { useState } from "react";
 import { Bell, Menu, Search } from "lucide-react";
 import { Sidebar } from "./Sidebar";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+
   return (
     <div className="min-h-screen bg-slate-100 lg:flex">
       <Sidebar />
+
+      {menuOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="القائمة الرئيسية">
+          <button
+            className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
+            onClick={() => setMenuOpen(false)}
+            aria-label="إغلاق القائمة"
+          />
+          <div className="relative h-full w-fit shadow-2xl">
+            <Sidebar mobile onClose={() => setMenuOpen(false)} />
+          </div>
+        </div>
+      )}
+
       <div className="min-w-0 flex-1">
         <header className="sticky top-0 z-20 flex h-20 items-center justify-between border-b border-slate-200 bg-white/95 px-4 backdrop-blur md:px-8">
           <div className="flex items-center gap-3">
-            <button className="rounded-xl border border-slate-200 p-2.5 text-slate-600 lg:hidden" aria-label="فتح القائمة">
+            <button
+              onClick={() => setMenuOpen(true)}
+              className="rounded-xl border border-slate-200 p-2.5 text-slate-600 lg:hidden"
+              aria-label="فتح القائمة"
+            >
               <Menu size={20} />
             </button>
             <div className="relative hidden md:block">
