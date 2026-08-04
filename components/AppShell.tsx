@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { LogOut, Menu, Search } from "lucide-react";
 import { Sidebar } from "./Sidebar";
 import { NotificationBell } from "./NotificationBell";
@@ -11,6 +11,7 @@ type CurrentUser = { fullName: string; email: string; role: string };
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
   const [user, setUser] = useState<CurrentUser | null>(null);
 
@@ -20,6 +21,33 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       .then(setUser)
       .catch(() => setUser(null));
   }, []);
+
+  useEffect(() => {
+    const beneficiaryMatch = pathname.match(/^\/beneficiaries\/([^/]+)$/);
+    if (!beneficiaryMatch) return;
+
+    function handleProfileAction(event: MouseEvent) {
+      const target = event.target as HTMLElement | null;
+      const button = target?.closest("button");
+      if (!button) return;
+
+      const label = button.textContent?.replace(/\s+/g, " ").trim() || "";
+
+      if (label.includes("وثيقة")) {
+        event.preventDefault();
+        router.push(`/beneficiaries/${beneficiaryMatch![1]}/documents`);
+        return;
+      }
+
+      if (label.includes("طباعة") || label.includes("PDF")) {
+        event.preventDefault();
+        window.print();
+      }
+    }
+
+    document.addEventListener("click", handleProfileAction);
+    return () => document.removeEventListener("click", handleProfileAction);
+  }, [pathname, router]);
 
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
