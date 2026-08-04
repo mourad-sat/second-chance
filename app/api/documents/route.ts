@@ -1,11 +1,16 @@
 import { DocumentCategory } from "@prisma/client";
+import { put } from "@vercel/blob";
 import { NextResponse } from "next/server";
 import { currentSession } from "@/lib/auth-server";
 import { prisma } from "@/lib/prisma";
 
-const MAX_FILE_SIZE = 8 * 1024 * 1024;
+const MAX_FILE_SIZE = 4 * 1024 * 1024;
 const ALLOWED_TYPES = new Set(["application/pdf", "image/png", "image/jpeg", "image/webp"]);
 const categories = Object.values(DocumentCategory);
+
+function safePathPart(value: string) {
+  return value.normalize("NFKD").replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") || "document";
+}
 
 export async function GET(request: Request) {
   const beneficiaryId = new URL(request.url).searchParams.get("beneficiaryId");
@@ -22,6 +27,7 @@ export async function GET(request: Request) {
       sizeBytes: true,
       notes: true,
       uploadedByName: true,
+      storageProvider: true,
       createdAt: true
     },
     orderBy: { createdAt: "desc" }
@@ -31,9 +37,15 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  let uploadedBlobUrl: string | null = null;
+
   try {
     const session = await currentSession();
     if (!session) return NextResponse.json({ message: "يجب تسجيل الدخول أولًا." }, { status: 401 });
+
+    if (!process.env.BLOB_READ_WRITE_TOKEN) {
+      return NextResponse.json({ message: "لم يتم إعداد مخزن Vercel Blob بعد." }, { status: 503 });
+    }
 
     const form = await request.formData();
     const file = form.get("file");
@@ -50,7 +62,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: "يسمح فقط بملفات PDF وصور PNG وJPG وWEBP." }, { status: 400 });
     }
     if (file.size <= 0 || file.size > MAX_FILE_SIZE) {
-      return NextResponse.json({ message: "حجم الملف يجب ألا يتجاوز 8 ميغابايت." }, { status: 400 });
+      return NextResponse.json({ message: "حجم الملف يجب ألا يتجاوز 4 ميغابايت في الرفع عبر الخادم." }, { status: 400 });
     }
 
     const beneficiary = await prisma.beneficiary.findUnique({
@@ -59,7 +71,14 @@ export async function POST(request: Request) {
     });
     if (!beneficiary) return NextResponse.json({ message: "المستفيد غير موجود." }, { status: 404 });
 
-    const data = Buffer.from(await file.arrayBuffer());
+    const pathname = `beneficiaries/${safePathPart(beneficiaryId)}/${safePathPart(file.name)}`;
+    const blob = await put(pathname, file, {
+      access: "private",
+      addRandomSuffix: true,
+      contentType: file.type
+    });
+    uploadedBlobUrl = blob.url;
+
     const document = await prisma.document.create({
       data: {
         beneficiaryId,
@@ -68,7 +87,10 @@ export async function POST(request: Request) {
         fileName: file.name,
         mimeType: file.type,
         sizeBytes: file.size,
-        data,
+        data: null,
+        storageProvider: "VERCEL_BLOB",
+        blobUrl: blob.url,
+        blobPathname: blob.pathname,
         notes,
         uploadedById: session.userId,
         uploadedByName: session.fullName
@@ -80,7 +102,7 @@ export async function POST(request: Request) {
         data: {
           beneficiaryId,
           category: "DOCUMENT",
-          title: "رفع وثيقة",
+          title: "رفع وثيقة إلى التخزين الخارجي",
           description: `${title} (${file.name})`,
           actorName: session.fullName,
           referenceType: "Document",
@@ -91,17 +113,17 @@ export async function POST(request: Request) {
       prisma.auditLog.create({
         data: {
           userId: session.userId,
-          action: "DOCUMENT_UPLOADED",
+          action: "DOCUMENT_UPLOADED_TO_BLOB",
           entityType: "Document",
           entityId: document.id,
-          description: `رفع وثيقة ${title} للمستفيد ${beneficiary.firstName} ${beneficiary.lastName}`
+          description: `رفع وثيقة ${title} للمستفيد ${beneficiary.firstName} ${beneficiary.lastName} إلى Vercel Blob`
         }
       })
     ]);
 
     return NextResponse.json({ id: document.id }, { status: 201 });
   } catch (error) {
-    console.error(error);
-    return NextResponse.json({ message: "تعذر رفع الوثيقة." }, { status: 500 });
+    console.error(error, uploadedBlobUrl ? `Orphan blob may require cleanup: ${uploadedBlobUrl}` : "");
+    return NextResponse.json({ message: "تعذر رفع الوثيقة إلى التخزين الخارجي." }, { status: 500 });
   }
 }
