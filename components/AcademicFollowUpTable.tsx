@@ -61,7 +61,7 @@ export function AcademicFollowUpTable({ items }: { items: FollowUpItem[] }) {
         <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div>
             <h2 className="text-xl font-bold text-slate-950">لوحة المتابعة الفردية</h2>
-            <p className="mt-1 text-sm text-slate-500">ابحث عن المستفيد، راقب مؤشرات الخطر، وافتح ملفه لاتخاذ الإجراء المناسب.</p>
+            <p className="mt-1 text-sm text-slate-500">ابحث عن المستفيد، راقب مؤشرات الخطر، وافتح خطة الدعم لاتخاذ الإجراء المناسب.</p>
           </div>
           <div className="grid gap-3 sm:grid-cols-3 xl:min-w-[680px]">
             <label className="relative block sm:col-span-1">
@@ -138,9 +138,14 @@ export function AcademicFollowUpTable({ items }: { items: FollowUpItem[] }) {
                   <td className="max-w-56 px-5 py-4 text-xs leading-6 text-slate-600">{item.lastAssessment}</td>
                   <td className="max-w-56 px-5 py-4 text-xs leading-6 text-slate-600">{item.lastSupport}</td>
                   <td className="px-5 py-4">
-                    <Link href={`/beneficiaries/${item.id}#academic`} className="inline-flex rounded-lg border border-slate-300 px-3 py-2 text-xs font-bold text-slate-800 hover:bg-slate-100">
-                      فتح مركز المتابعة
-                    </Link>
+                    <div className="flex flex-col gap-2">
+                      <Link href={`/beneficiaries/${item.id}/support-plan`} className="inline-flex justify-center rounded-lg bg-blue-600 px-3 py-2 text-xs font-bold text-white hover:bg-blue-700">
+                        خطة الدعم الفردية
+                      </Link>
+                      <Link href={`/beneficiaries/${item.id}#academic`} className="inline-flex justify-center rounded-lg border border-slate-300 px-3 py-2 text-xs font-bold text-slate-800 hover:bg-slate-100">
+                        فتح الملف الموحد
+                      </Link>
+                    </div>
                   </td>
                 </tr>
               ))}
