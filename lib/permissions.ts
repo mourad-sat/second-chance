@@ -31,6 +31,7 @@ const rolePaths: Record<string, string[]> = {
 
 const apiToPage: [string, string][] = [
   ["/api/notifications", "/notifications"],
+  ["/api/documents", "/beneficiaries"],
   ["/api/beneficiaries", "/beneficiaries"],
   ["/api/admission-assessment", "/admissions"],
   ["/api/admissions", "/admissions"],
