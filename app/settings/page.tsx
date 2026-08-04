@@ -5,7 +5,7 @@ import { AppShell } from "@/components/AppShell";
 const cards = [
   { title: "الإعدادات العامة", description: "اسم المؤسسة والموسم الدراسي والهوية", icon: Settings, href: null },
   { title: "المستخدمون والصلاحيات", description: "إدارة الحسابات والأدوار ومسؤوليات فريق العمل", icon: ShieldCheck, href: "/settings/users" },
-  { title: "البيانات والنسخ الاحتياطي", description: "سلامة البيانات وإدارة النسخ", icon: Database, href: null }
+  { title: "تخزين الوثائق", description: "متابعة Vercel Blob وترحيل الملفات القديمة بأمان", icon: Database, href: "/settings/storage" }
 ];
 
 export default function SettingsPage() {
