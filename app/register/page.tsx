@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { PublicRegistrationForm } from "@/components/PublicRegistrationForm";
-import { Printer, ShieldCheck } from "lucide-react";
+import { Clock3, Printer, ShieldCheck } from "lucide-react";
 
 export const metadata = {
   title: "التسجيل القبلي | برنامج الفرصة الثانية",
@@ -31,12 +31,15 @@ export default function PublicRegistrationPage() {
             <p className="mx-auto mt-3 max-w-3xl text-sm leading-7 text-slate-600">
               يرجى تعبئة المعلومات بدقة. إرسال الاستمارة يثبت إيداع طلب التسجيل القبلي، ولا يعني القبول النهائي في البرنامج.
             </p>
-            <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-center">
+            <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-center">
               <div className="inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-bold text-emerald-800">
                 <ShieldCheck size={17} /> تُستعمل بياناتك فقط لدراسة الطلب والتواصل معك.
               </div>
               <Link href="/registration-receipt" className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-800 px-4 py-3 text-sm font-bold text-white transition hover:bg-blue-900">
                 <Printer size={17} /> طباعة بطاقة تسجيل سابقة
+              </Link>
+              <Link href="/application-status" className="inline-flex items-center justify-center gap-2 rounded-xl border border-blue-200 bg-white px-4 py-3 text-sm font-bold text-blue-900 transition hover:bg-blue-50">
+                <Clock3 size={17} /> تتبع حالة الطلب
               </Link>
             </div>
           </div>
