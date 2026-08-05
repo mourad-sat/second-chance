@@ -22,6 +22,14 @@ function createRegistrationNumber() {
   return `SC-${year}-${code}`;
 }
 
+function calculateAge(date: Date) {
+  const today = new Date();
+  let age = today.getFullYear() - date.getFullYear();
+  const month = today.getMonth() - date.getMonth();
+  if (month < 0 || (month === 0 && today.getDate() < date.getDate())) age--;
+  return age;
+}
+
 export async function POST(request: Request) {
   let uploadedPhotoUrl: string | null = null;
 
@@ -29,33 +37,43 @@ export async function POST(request: Request) {
     const form = await request.formData();
     const firstName = clean(form.get("firstName"), 80);
     const lastName = clean(form.get("lastName"), 80);
+    const gender = clean(form.get("gender"), 20);
+    const birthPlace = clean(form.get("birthPlace"), 120) || null;
     const phone = clean(form.get("phone"), 30);
     const guardianPhone = clean(form.get("guardianPhone"), 30) || null;
-    const masarNumber = clean(form.get("masarNumber"), 30).toUpperCase() || null;
-    const address = clean(form.get("address"), 300) || null;
-    const lastEducationLevel = clean(form.get("lastEducationLevel"), 120) || null;
+    const email = clean(form.get("email"), 180) || null;
+    const masarNumber = clean(form.get("masarNumber"), 30).toUpperCase();
+    const address = clean(form.get("address"), 300);
+    const commune = clean(form.get("commune"), 120) || null;
+    const province = clean(form.get("province"), 120) || null;
+    const lastEducationLevel = clean(form.get("lastEducationLevel"), 120);
     const lastSchoolName = clean(form.get("lastSchoolName"), 180) || null;
-    const dropoutReasons = clean(form.get("dropoutReasons"), 800) || null;
+    const dropoutReasons = clean(form.get("dropoutReasons"), 800);
     const learningDifficulties = clean(form.get("learningDifficulties"), 600) || null;
     const guardianName = clean(form.get("guardianName"), 120) || null;
     const guardianRelationship = clean(form.get("guardianRelationship"), 100) || null;
     const previousProgram = clean(form.get("previousProgram"), 20) || "غير محدد";
     const careerChoice1 = clean(form.get("careerChoice1"), 180);
     const careerChoice2 = clean(form.get("careerChoice2"), 180) || null;
+    const careerChoice3 = clean(form.get("careerChoice3"), 180) || null;
+    const careerChoiceReason = clean(form.get("careerChoiceReason"), 800) || null;
+    const priorExperience = clean(form.get("priorExperience"), 800) || null;
     const programExpectation = clean(form.get("programExpectation"), 800) || null;
-    const personalProject = clean(form.get("personalProject"), 1000) || null;
-    const careerGoal = [careerChoice1, careerChoice2].filter(Boolean).join(" | ") || null;
+    const personalProject = clean(form.get("personalProject"), 1000);
+    const registrationGoals = form.getAll("registrationGoals").map((value) => clean(value, 120)).filter(Boolean).join(" | ") || null;
+    const careerGoal = [careerChoice1, careerChoice2, careerChoice3].filter(Boolean).join(" | ") || null;
     const birthDateValue = clean(form.get("birthDate"), 30);
     const consent = form.get("consent") === "on";
+    const declaration = form.get("declaration") === "on";
     const photo = form.get("photo");
     const currentYear = new Date().getFullYear();
     const dropoutYear = optionalInt(form.get("dropoutYear"), 1990, currentYear);
 
-    if (!firstName || !lastName || !phone || !birthDateValue || !address || !lastEducationLevel || !dropoutReasons || !careerChoice1 || !personalProject) {
+    if (!firstName || !lastName || !gender || !phone || !birthDateValue || !address || !masarNumber || !lastEducationLevel || !dropoutReasons || !careerChoice1 || !personalProject) {
       return NextResponse.json({ message: "يرجى تعبئة جميع الحقول الإلزامية المميزة بعلامة *." }, { status: 400 });
     }
-    if (!consent) {
-      return NextResponse.json({ message: "يجب الموافقة على معالجة البيانات لإرسال الطلب." }, { status: 400 });
+    if (!consent || !declaration) {
+      return NextResponse.json({ message: "يجب الموافقة على الإقرار ومعالجة البيانات لإرسال الطلب." }, { status: 400 });
     }
     if (!(photo instanceof File) || photo.size <= 0) {
       return NextResponse.json({ message: "صورة المترشح مطلوبة." }, { status: 400 });
@@ -72,16 +90,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: "تاريخ الازدياد غير صالح." }, { status: 400 });
     }
 
-    const age = Math.floor((Date.now() - birthDate.getTime()) / 31557600000);
-    if (age < 8 || age > 40) {
-      return NextResponse.json({ message: "يرجى التأكد من تاريخ الازدياد المدخل." }, { status: 400 });
+    const age = calculateAge(birthDate);
+    if (age < 14 || age > 20) {
+      return NextResponse.json({ message: "التسجيل متاح فقط للمترشحين الذين تتراوح أعمارهم بين 14 و20 سنة." }, { status: 400 });
     }
 
-    if (masarNumber) {
-      const duplicateMasar = await prisma.beneficiary.findUnique({ where: { masarNumber }, select: { id: true } });
-      if (duplicateMasar) {
-        return NextResponse.json({ message: "يوجد طلب مسجل مسبقًا برقم مسار هذا." }, { status: 409 });
-      }
+    const duplicateMasar = await prisma.beneficiary.findUnique({ where: { masarNumber }, select: { id: true } });
+    if (duplicateMasar) {
+      return NextResponse.json({ message: "يوجد طلب مسجل مسبقًا برقم مسار هذا." }, { status: 409 });
     }
 
     const duplicate = await prisma.beneficiary.findFirst({
@@ -115,6 +131,18 @@ export async function POST(request: Request) {
         profilePhotoUrl: blob.url,
         profilePhotoPathname: blob.pathname,
         personalProject,
+        gender,
+        email,
+        birthPlace,
+        commune,
+        province,
+        programExpectation,
+        registrationGoals,
+        careerChoice1,
+        careerChoice2,
+        careerChoice3,
+        careerChoiceReason,
+        priorExperience,
         firstName,
         lastName,
         birthDate,
@@ -131,9 +159,9 @@ export async function POST(request: Request) {
         careerGoal,
         status: "PRE_REGISTERED",
         followUpNotes: [
-          "تم إرسال الطلب عبر استمارة التسجيل القبلي الخارجية.",
+          "تم إرسال الطلب عبر استمارة التسجيل القبلي الخارجية المرتبطة بمنصة التدبير.",
           `سبق الاستفادة من برنامج مشابه: ${previousProgram}.`,
-          programExpectation ? `رغبة المترشح من البرنامج: ${programExpectation}` : null
+          programExpectation ? `توقعات المترشح من البرنامج: ${programExpectation}` : null
         ].filter(Boolean).join(" ")
       }
     });
@@ -143,7 +171,7 @@ export async function POST(request: Request) {
         beneficiaryId: beneficiary.id,
         category: "REGISTRATION",
         title: "تسجيل قبلي خارجي",
-        description: `رقم التسجيل: ${registrationNumber}. الرغبة الأولى: ${careerChoice1}${careerChoice2 ? `، الرغبة الثانية: ${careerChoice2}` : ""}.`,
+        description: `رقم التسجيل: ${registrationNumber}. رقم مسار: ${masarNumber}. الرغبات: ${careerGoal}.`,
         actorName: "المترشح",
         referenceType: "Beneficiary",
         referenceId: beneficiary.id,
@@ -155,7 +183,8 @@ export async function POST(request: Request) {
     return NextResponse.json({
       applicationNumber: registrationNumber,
       registrationDate: registrationDate.toISOString(),
-      candidateName: `${firstName} ${lastName}`
+      candidateName: `${firstName} ${lastName}`,
+      beneficiaryId: beneficiary.id
     }, { status: 201 });
   } catch (error) {
     if (uploadedPhotoUrl) {
