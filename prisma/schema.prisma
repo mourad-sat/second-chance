@@ -143,6 +143,12 @@ enum DocumentCategory {
 
 model Beneficiary {
   id String @id @default(cuid())
+  registrationNumber String? @unique
+  registrationDate DateTime @default(now())
+  masarNumber String? @unique
+  profilePhotoUrl String?
+  profilePhotoPathname String?
+  personalProject String?
   firstName String
   lastName String
   birthDate DateTime?
