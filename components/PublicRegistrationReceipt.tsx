@@ -4,7 +4,7 @@ import { FormEvent, useState } from "react";
 import { CheckCircle2, Loader2, Printer, Search, ShieldCheck, UserRound } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 
-const OFFICIAL_HEADER_URL = "https://i.ibb.co/BVzhsFV4/1.jpg";
+const OFFICIAL_HEADER_URL = "https://i.ibb.co/Wvn9YX6y/1235.png";
 
 const statusConfig: Record<string, { label: string; badge: string }> = {
   PRE_REGISTERED: { label: "مسجل قبليًا", badge: "bg-emerald-100 text-emerald-800" },
@@ -84,7 +84,7 @@ export function PublicRegistrationReceipt() {
           <article id="registration-receipt" className="mx-auto overflow-hidden rounded-[2rem] border border-blue-200 bg-white shadow-2xl shadow-slate-300/50">
             <div className="h-3 bg-gradient-to-l from-emerald-600 via-blue-700 to-blue-950" />
             <div className="border-b border-slate-200 bg-white px-4 py-4 sm:px-7">
-              <img src={OFFICIAL_HEADER_URL} alt="شعارات الشركاء" width={886} height={232} crossOrigin="anonymous" className="mx-auto block h-auto w-full max-w-[886px] object-contain" />
+              <img src={OFFICIAL_HEADER_URL} alt="شعارات الشركاء" width={2048} height={512} crossOrigin="anonymous" className="mx-auto block h-auto w-full max-w-[1100px] object-contain" />
             </div>
             <header className="flex flex-col gap-5 bg-slate-950 px-7 py-6 text-white sm:flex-row sm:items-center sm:justify-between">
               <div><p className="text-sm font-bold text-emerald-300">جمعية نور الأمل</p><h1 className="mt-1 text-2xl font-black">بطاقة التسجيل القبلي</h1><p className="mt-1 text-sm text-slate-300">برنامج الفرصة الثانية – الجيل الجديد</p></div>
