@@ -9,8 +9,6 @@ export const metadata = {
 
 export const dynamic = "force-dynamic";
 
-const officialHeaderImage = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////2wBDAf//////////////////////////////////////////////////////////////////////////////////////wAARCAAyA3YDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAf/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIQAxAAAAH/AP/EABQQAQAAAAAAAAAAAAAAAAAAAJD/2gAIAQEAAQUCf//EABQRAQAAAAAAAAAAAAAAAAAAAJD/2gAIAQMBAT8Bf//EABQRAQAAAAAAAAAAAAAAAAAAAJD/2gAIAQIBAT8Bf//EABQQAQAAAAAAAAAAAAAAAAAAAJD/2gAIAQEABj8Cf//EABQQAQAAAAAAAAAAAAAAAAAAAJD/2gAIAQEAAT8hf//aAAwDAQACAAMAAAAQ/wD/xAAUEQEAAAAAAAAAAAAAAAAAAABQ/9oACAEDAQE/EB//xAAUEQEAAAAAAAAAAAAAAAAAAABQ/9oACAECAQE/EB//xAAUEAEAAAAAAAAAAAAAAAAAAABQ/9oACAEBAAE/EB//2Q==";
-
 export default function PublicRegistrationPage() {
   return (
     <main dir="rtl" className="min-h-screen bg-slate-100 px-3 py-5 sm:px-4 sm:py-8">
@@ -18,7 +16,7 @@ export default function PublicRegistrationPage() {
         <header className="mb-6 overflow-hidden rounded-[2rem] border border-blue-100 bg-white shadow-xl shadow-slate-200/60">
           <div className="border-t-[7px] border-blue-800 px-3 pt-3 sm:px-6 sm:pt-5">
             <img
-              src={officialHeaderImage}
+              src="/branding/registration-header.jpg"
               alt="شعارات وزارة التربية الوطنية وجمعية نور الأمل وقطاع الشباب"
               className="mx-auto h-auto w-full max-w-[886px] object-contain"
             />
