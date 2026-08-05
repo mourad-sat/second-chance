@@ -6,6 +6,11 @@ export const dynamic = "force-dynamic";
 
 export default async function BeneficiariesPage() {
   const beneficiaries = await prisma.beneficiary.findMany({
+    where: {
+      activityLogs: {
+        none: { referenceType: "BENEFICIARY_ARCHIVE" }
+      }
+    },
     orderBy: { createdAt: "desc" },
     include: {
       enrollments: {
