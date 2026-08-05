@@ -4,20 +4,32 @@ import { prisma } from "@/lib/prisma";
 const MAX_BATCH_SIZE = 100;
 
 type BulkAction = "archive" | "trash";
+type RequestBody = {
+  ids?: unknown;
+  action?: unknown;
+  reason?: unknown;
+  actorName?: unknown;
+};
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    const ids = Array.isArray(body.ids)
-      ? Array.from(new Set(body.ids.filter((value: unknown): value is string => typeof value === "string" && value.trim().length > 0)))
-      : [];
-    const action = body.action as BulkAction;
+    const body = (await request.json()) as RequestBody;
+    const rawIds: unknown[] = Array.isArray(body.ids) ? body.ids : [];
+    const ids: string[] = Array.from(
+      new Set(
+        rawIds
+          .filter((value): value is string => typeof value === "string")
+          .map((value) => value.trim())
+          .filter((value) => value.length > 0)
+      )
+    );
+    const action: BulkAction | null = body.action === "archive" || body.action === "trash" ? body.action : null;
     const reason = typeof body.reason === "string" && body.reason.trim() ? body.reason.trim() : null;
     const actorName = typeof body.actorName === "string" && body.actorName.trim() ? body.actorName.trim() : "إدارة المنصة";
 
     if (!ids.length) return NextResponse.json({ message: "لم يتم تحديد أي مستفيد." }, { status: 400 });
     if (ids.length > MAX_BATCH_SIZE) return NextResponse.json({ message: `الحد الأقصى للعملية الواحدة هو ${MAX_BATCH_SIZE} ملف.` }, { status: 400 });
-    if (!["archive", "trash"].includes(action)) return NextResponse.json({ message: "العملية الجماعية غير صالحة." }, { status: 400 });
+    if (!action) return NextResponse.json({ message: "العملية الجماعية غير صالحة." }, { status: 400 });
 
     const beneficiaries = await prisma.beneficiary.findMany({
       where: { id: { in: ids }, deletedAt: null },
@@ -26,7 +38,7 @@ export async function POST(request: Request) {
 
     if (!beneficiaries.length) return NextResponse.json({ message: "لا توجد ملفات صالحة لتنفيذ العملية." }, { status: 404 });
 
-    const validIds = beneficiaries.map((item) => item.id);
+    const validIds: string[] = beneficiaries.map((item) => item.id);
     const now = new Date();
     const isArchive = action === "archive";
 
