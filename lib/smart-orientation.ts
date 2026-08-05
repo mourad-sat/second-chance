@@ -91,7 +91,7 @@ export function buildSmartOrientation(input: OrientationInput): OrientationRecom
     input.attendanceReadiness
   ].filter((value) => value !== null && value !== undefined && value !== "").length;
 
-  return tracks.map((track) => {
+  return tracks.map<OrientationRecommendation>((track) => {
     let score = 20;
     const reasons: string[] = [];
     const cautions: string[] = [];
@@ -151,10 +151,17 @@ export function buildSmartOrientation(input: OrientationInput): OrientationRecom
     }
 
     const finalScore = Math.max(5, Math.min(98, Math.round(score)));
-    const confidence = availableSignals >= 9 ? "مرتفعة" : availableSignals >= 5 ? "متوسطة" : "أولية";
+    const confidence: OrientationRecommendation["confidence"] =
+      availableSignals >= 9 ? "مرتفعة" : availableSignals >= 5 ? "متوسطة" : "أولية";
 
     if (!reasons.length) reasons.push("التوصية أولية وتحتاج إلى استكمال نتائج التشخيص والميول.");
 
-    return { track: track.name, score: finalScore, confidence, reasons: reasons.slice(0, 4), cautions: cautions.slice(0, 3) };
+    return {
+      track: track.name,
+      score: finalScore,
+      confidence,
+      reasons: reasons.slice(0, 4),
+      cautions: cautions.slice(0, 3)
+    };
   }).sort((a, b) => b.score - a.score).slice(0, 3);
 }
