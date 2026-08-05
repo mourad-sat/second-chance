@@ -1,99 +1,124 @@
 import { AppShell } from "@/components/AppShell";
 import { WorkflowManager } from "@/components/WorkflowManager";
 import { prisma } from "@/lib/prisma";
+import {
+  getWorkflowTransitions,
+  workflowProgress,
+  workflowStatusLabels
+} from "@/lib/workflow-engine";
 
 export const dynamic = "force-dynamic";
-
-const labels: Record<string, string> = {
-  PRE_REGISTERED: "التسجيل الأولي",
-  UNDER_REVIEW: "دراسة الملف والتشخيص",
-  WAITLISTED: "لائحة الانتظار",
-  ACCEPTED: "القبول",
-  REJECTED: "الملف مرفوض",
-  ENROLLED: "التمدرس والتكوين",
-  WITHDRAWN: "المسار متوقف",
-  COMPLETED: "استكمال البرنامج"
-};
-
-const progress: Record<string, number> = {
-  PRE_REGISTERED: 15,
-  UNDER_REVIEW: 30,
-  WAITLISTED: 40,
-  ACCEPTED: 50,
-  REJECTED: 30,
-  ENROLLED: 75,
-  WITHDRAWN: 75,
-  COMPLETED: 100
-};
-
-const nextTransitions: Record<string, { value: string; label: string }[]> = {
-  PRE_REGISTERED: [{ value: "UNDER_REVIEW", label: "بدء دراسة الملف" }],
-  UNDER_REVIEW: [
-    { value: "ACCEPTED", label: "قبول المستفيد" },
-    { value: "WAITLISTED", label: "إدراج في الانتظار" },
-    { value: "REJECTED", label: "رفض الملف" }
-  ],
-  WAITLISTED: [
-    { value: "ACCEPTED", label: "قبول من لائحة الانتظار" },
-    { value: "REJECTED", label: "رفض الملف" }
-  ],
-  ACCEPTED: [{ value: "ENROLLED", label: "تأكيد التمدرس" }],
-  REJECTED: [{ value: "UNDER_REVIEW", label: "إعادة فتح الدراسة" }],
-  ENROLLED: [
-    { value: "COMPLETED", label: "إنهاء البرنامج" },
-    { value: "WITHDRAWN", label: "تسجيل انسحاب" }
-  ],
-  WITHDRAWN: [{ value: "ENROLLED", label: "إعادة الإدماج" }],
-  COMPLETED: []
-};
 
 export default async function WorkflowPage() {
   const beneficiaries = await prisma.beneficiary.findMany({
     include: {
+      admissionAssessment: { select: { decision: true } },
       enrollments: {
+        where: { leftAt: null },
         include: { group: { select: { name: true } } },
         orderBy: { enrolledAt: "desc" },
         take: 1
+      },
+      activityLogs: {
+        where: { referenceType: "BENEFICIARY_WORKFLOW" },
+        orderBy: { eventDate: "desc" },
+        take: 1,
+        select: { title: true, eventDate: true, actorName: true }
+      },
+      _count: {
+        select: {
+          documents: true,
+          attendanceRecords: true,
+          skillEvaluations: true,
+          vocationalProjects: true,
+          internships: true
+        }
       }
     },
     orderBy: [{ updatedAt: "desc" }]
   });
 
-  const items = beneficiaries.map((beneficiary) => ({
-    id: beneficiary.id,
-    firstName: beneficiary.firstName,
-    lastName: beneficiary.lastName,
-    status: beneficiary.status,
-    stageLabel: labels[beneficiary.status] || beneficiary.status,
-    progress: progress[beneficiary.status] || 0,
-    groupName: beneficiary.enrollments[0]?.group.name || null,
-    nextOptions: nextTransitions[beneficiary.status] || []
-  }));
+  const items = beneficiaries.map((beneficiary) => {
+    const transitions = getWorkflowTransitions({
+      status: beneficiary.status,
+      masarNumber: beneficiary.masarNumber,
+      birthDate: beneficiary.birthDate,
+      phone: beneficiary.phone,
+      address: beneficiary.address,
+      lastEducationLevel: beneficiary.lastEducationLevel,
+      personalProject: beneficiary.personalProject,
+      careerChoice1: beneficiary.careerChoice1,
+      documentsCount: beneficiary._count.documents,
+      hasAdmissionAssessment: Boolean(beneficiary.admissionAssessment),
+      admissionDecision: beneficiary.admissionAssessment?.decision || null,
+      hasActiveEnrollment: beneficiary.enrollments.length > 0,
+      attendanceRecordsCount: beneficiary._count.attendanceRecords,
+      hasTrainingEvidence: beneficiary._count.skillEvaluations > 0 || beneficiary._count.vocationalProjects > 0,
+      hasIntegrationEvidence: beneficiary._count.internships > 0
+    });
+
+    const readyTransitions = transitions.filter((transition) => transition.ready).length;
+    const totalBlockers = transitions.reduce((sum, transition) => sum + transition.blockers.length, 0);
+    const totalWarnings = transitions.reduce((sum, transition) => sum + transition.warnings.length, 0);
+    const readinessRate = transitions.length
+      ? Math.round((readyTransitions / transitions.length) * 100)
+      : beneficiary.status === "COMPLETED" ? 100 : 0;
+
+    return {
+      id: beneficiary.id,
+      firstName: beneficiary.firstName,
+      lastName: beneficiary.lastName,
+      registrationNumber: beneficiary.registrationNumber,
+      masarNumber: beneficiary.masarNumber,
+      status: beneficiary.status,
+      stageLabel: workflowStatusLabels[beneficiary.status],
+      progress: workflowProgress[beneficiary.status],
+      readinessRate,
+      groupName: beneficiary.enrollments[0]?.group.name || null,
+      blockersCount: totalBlockers,
+      warningsCount: totalWarnings,
+      lastTransition: beneficiary.activityLogs[0]
+        ? {
+            title: beneficiary.activityLogs[0].title,
+            date: beneficiary.activityLogs[0].eventDate.toISOString(),
+            actorName: beneficiary.activityLogs[0].actorName
+          }
+        : null,
+      nextOptions: transitions.map((transition) => ({
+        value: transition.value,
+        label: transition.label,
+        description: transition.description,
+        blockers: transition.blockers,
+        warnings: transition.warnings,
+        ready: transition.ready
+      }))
+    };
+  });
 
   const activeFiles = beneficiaries.filter((item) => !["REJECTED", "WITHDRAWN", "COMPLETED"].includes(item.status)).length;
-  const underReview = beneficiaries.filter((item) => item.status === "UNDER_REVIEW").length;
-  const enrolled = beneficiaries.filter((item) => item.status === "ENROLLED").length;
+  const readyFiles = items.filter((item) => item.nextOptions.some((option) => option.ready)).length;
+  const blockedFiles = items.filter((item) => item.blockersCount > 0).length;
   const completed = beneficiaries.filter((item) => item.status === "COMPLETED").length;
 
   return (
     <AppShell>
-      <div className="mx-auto max-w-7xl">
-        <header className="mb-8">
-          <p className="text-sm font-semibold text-blue-600">المسار الرقمي الموحد</p>
-          <h1 className="mt-1 text-3xl font-bold text-slate-950">سير ملفات المستفيدين</h1>
-          <p className="mt-2 text-slate-600">تتبع انتقال كل ملف من التسجيل الأولي إلى استكمال البرنامج، مع منع الانتقالات غير المنطقية وتوثيق كل إجراء.</p>
+      <div className="mx-auto max-w-[1500px] space-y-6">
+        <header className="overflow-hidden rounded-[2rem] bg-gradient-to-l from-blue-950 via-blue-900 to-blue-700 p-6 text-white shadow-xl shadow-blue-950/10 sm:p-8">
+          <p className="text-sm font-black text-cyan-300">Workflow Engine 2.0</p>
+          <h1 className="mt-2 text-3xl font-black sm:text-4xl">سير ملفات المستفيدين</h1>
+          <p className="mt-3 max-w-3xl text-sm leading-7 text-blue-100">إدارة انتقال الملفات بين مراحل البرنامج وفق شروط موحدة، مع إظهار الجاهزية والمتطلبات الناقصة والتنبيهات وتوثيق كل انتقال.</p>
         </header>
 
-        <section className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {[
-            ["الملفات النشيطة", activeFiles],
-            ["قيد الدراسة", underReview],
-            ["في التمدرس والتكوين", enrolled],
-            ["أنهت البرنامج", completed]
-          ].map(([label, value]) => (
-            <article key={String(label)} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <p className="text-sm text-slate-500">{label}</p>
-              <p className="mt-2 text-3xl font-bold text-slate-950">{value}</p>
+            ["الملفات النشيطة", activeFiles, "bg-blue-50 text-blue-800"],
+            ["جاهزة للانتقال", readyFiles, "bg-emerald-50 text-emerald-800"],
+            ["متوقفة بمتطلبات", blockedFiles, "bg-amber-50 text-amber-800"],
+            ["أنهت البرنامج", completed, "bg-violet-50 text-violet-800"]
+          ].map(([label, value, className]) => (
+            <article key={String(label)} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+              <span className={`inline-flex rounded-full px-3 py-1 text-xs font-black ${className}`}>{label}</span>
+              <p className="mt-4 text-4xl font-black text-slate-950">{value}</p>
             </article>
           ))}
         </section>
