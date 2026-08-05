@@ -9,8 +9,10 @@ import {
   Circle,
   ClipboardCheck,
   FileText,
+  FolderOpen,
   GraduationCap,
   HeartHandshake,
+  History,
   Printer,
   Upload,
   UserRound
@@ -31,6 +33,32 @@ const statusLabels: Record<string, string> = {
   COMPLETED: "أنهى البرنامج"
 };
 
+const documentCategoryLabels: Record<string, string> = {
+  IDENTITY: "الهوية",
+  ENROLLMENT: "التسجيل",
+  EDUCATION: "الدراسة",
+  SOCIAL: "اجتماعي",
+  TRAINING: "التكوين",
+  INTERNSHIP: "التدريب",
+  INTEGRATION: "الإدماج",
+  OTHER: "أخرى"
+};
+
+const activityCategoryLabels: Record<string, string> = {
+  REGISTRATION: "التسجيل",
+  DIAGNOSIS: "التشخيص",
+  ADMISSION: "القبول",
+  ATTENDANCE: "الحضور",
+  ASSESSMENT: "التقييم",
+  SUPPORT: "الدعم",
+  SOCIAL: "المواكبة الاجتماعية",
+  TRAINING: "التكوين",
+  INTERNSHIP: "التدريب",
+  INTEGRATION: "الإدماج",
+  DOCUMENT: "الوثائق",
+  NOTE: "ملاحظة"
+};
+
 const stageIndex: Record<string, number> = {
   PRE_REGISTERED: 0,
   UNDER_REVIEW: 1,
@@ -42,8 +70,14 @@ const stageIndex: Record<string, number> = {
   COMPLETED: 5
 };
 
-function fileNumber(id: string, createdAt: Date) {
+function fallbackFileNumber(id: string, createdAt: Date) {
   return `SC-${createdAt.getFullYear()}-CAS-${id.slice(-5).toUpperCase()}`;
+}
+
+function formatBytes(bytes: number) {
+  if (!bytes) return "0 KB";
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 export const dynamic = "force-dynamic";
@@ -59,7 +93,9 @@ export default async function BeneficiaryProfilePage({ params }: { params: { id:
       academicResults: { include: { assessment: true }, orderBy: { createdAt: "desc" }, take: 3 },
       skillEvaluations: { orderBy: { evaluationDate: "desc" }, take: 3 },
       vocationalProjects: { orderBy: { createdAt: "desc" }, take: 1 },
-      internships: { orderBy: { createdAt: "desc" }, take: 1 }
+      internships: { orderBy: { createdAt: "desc" }, take: 1 },
+      documents: { orderBy: { createdAt: "desc" }, take: 6 },
+      activityLogs: { orderBy: { eventDate: "desc" }, take: 8 }
     }
   });
 
@@ -73,23 +109,22 @@ export default async function BeneficiaryProfilePage({ params }: { params: { id:
   const absenceCount = beneficiary.attendanceRecords.filter((record) => record.status === "ABSENT").length;
   const attendanceRate = totalAttendance ? Math.round((presentAttendance / totalAttendance) * 100) : 0;
   const currentStage = stageIndex[beneficiary.status] ?? 0;
+  const registrationNumber = beneficiary.registrationNumber || fallbackFileNumber(beneficiary.id, beneficiary.createdAt);
 
   const completenessFields = [
     beneficiary.firstName,
     beneficiary.lastName,
     beneficiary.birthDate,
-    beneficiary.identityNumber,
+    beneficiary.masarNumber,
     beneficiary.phone,
     beneficiary.guardianPhone,
     beneficiary.address,
     beneficiary.lastEducationLevel,
-    beneficiary.familySituation,
     beneficiary.guardianName,
     beneficiary.lastSchoolName,
     beneficiary.dropoutReasons,
-    beneficiary.diagnosticSummary,
-    beneficiary.supportPlan,
-    beneficiary.careerGoal,
+    beneficiary.personalProject,
+    beneficiary.careerChoice1,
     beneficiary.admissionAssessment
   ];
   const completedFields = completenessFields.filter(Boolean).length;
@@ -107,25 +142,27 @@ export default async function BeneficiaryProfilePage({ params }: { params: { id:
 
   const tabs = [
     ["#personal-data", "البيانات", UserRound],
+    ["#documents", "الوثائق", FolderOpen],
     ["#diagnosis", "التشخيص", ClipboardCheck],
     ["#attendance", "الحضور", CalendarCheck],
     ["#academic", "التتبع التربوي", BookOpenCheck],
     ["#social", "المواكبة", HeartHandshake],
     ["#training", "التكوين", GraduationCap],
-    ["#integration", "الإدماج", BriefcaseBusiness]
+    ["#integration", "الإدماج", BriefcaseBusiness],
+    ["#activity", "السجل", History]
   ] as const;
 
   return (
     <AppShell>
       <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <p className="text-sm font-semibold text-blue-600">الملف الرقمي الموحد</p>
+          <p className="text-sm font-semibold text-blue-600">الملف الإلكتروني الموحد</p>
           <h1 className="mt-1 text-3xl font-bold text-slate-950">ملف المستفيد</h1>
         </div>
         <div className="flex flex-wrap gap-2">
           <button type="button" className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold hover:bg-slate-50"><Printer size={16} /> طباعة</button>
           <button type="button" className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold hover:bg-slate-50"><FileText size={16} /> PDF</button>
-          <button type="button" className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold hover:bg-slate-50"><Upload size={16} /> وثيقة</button>
+          <a href="#documents" className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold hover:bg-slate-50"><Upload size={16} /> وثيقة</a>
           <Link href="/beneficiaries" className="inline-flex items-center gap-2 rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white"><ArrowRight size={16} /> العودة</Link>
         </div>
       </div>
@@ -133,35 +170,40 @@ export default async function BeneficiaryProfilePage({ params }: { params: { id:
       <section className="overflow-hidden rounded-3xl bg-slate-950 text-white shadow-sm">
         <div className="grid gap-5 p-5 xl:grid-cols-[1.35fr_1fr] xl:items-center">
           <div className="flex items-center gap-4">
-            <div className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl bg-blue-600 text-xl font-bold">
+            <div className="grid h-20 w-20 shrink-0 place-items-center rounded-3xl bg-gradient-to-br from-blue-500 to-blue-700 text-2xl font-black shadow-lg shadow-blue-950/30">
               {beneficiary.firstName.slice(0, 1)}{beneficiary.lastName.slice(0, 1)}
             </div>
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <h2 className="truncate text-2xl font-bold">{beneficiary.firstName} {beneficiary.lastName}</h2>
-                <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold">{statusLabels[beneficiary.status] || beneficiary.status}</span>
+                <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-semibold">{statusLabels[beneficiary.status] || beneficiary.status}</span>
               </div>
-              <p className="mt-1 font-mono text-xs text-slate-300">{fileNumber(beneficiary.id, beneficiary.createdAt)}</p>
-              <p className="mt-1 text-sm text-slate-300">{currentGroup ? `${currentGroup.name} · ${currentGroup.specialty || currentGroup.track || "المسار غير محدد"}` : "لم يتم إسناده إلى مجموعة بعد"}</p>
+              <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs text-slate-300">
+                <span>رقم التسجيل: <bdi className="font-mono font-bold text-white">{registrationNumber}</bdi></span>
+                <span>رقم مسار: <bdi className="font-mono font-bold text-white">{beneficiary.masarNumber || "غير محدد"}</bdi></span>
+              </div>
+              <p className="mt-2 text-sm text-slate-300">{currentGroup ? `${currentGroup.name} · ${currentGroup.specialty || currentGroup.track || "المسار غير محدد"}` : "لم يتم إسناده إلى مجموعة بعد"}</p>
             </div>
           </div>
 
           <div>
             <div className="flex items-center justify-between text-sm"><span className="font-semibold">اكتمال الملف</span><span>{completionRate}%</span></div>
-            <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-blue-500" style={{ width: `${completionRate}%` }} /></div>
+            <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-gradient-to-l from-emerald-400 to-blue-500" style={{ width: `${completionRate}%` }} /></div>
             <p className="mt-2 text-xs text-slate-400">{missingFields ? `بقي ${missingFields} عناصر أساسية لإكمال الملف.` : "البيانات الأساسية مكتملة."}</p>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-2 border-t border-white/10 p-4 sm:grid-cols-3 xl:grid-cols-6">
+        <div className="grid grid-cols-2 gap-2 border-t border-white/10 p-4 sm:grid-cols-4 xl:grid-cols-8">
           {[
             ["الحضور", `${attendanceRate}%`],
             ["الغيابات", absenceCount],
+            ["الوثائق", beneficiary.documents.length],
             ["المتابعات", beneficiary.socialFollowUps.length],
             ["التقييمات", beneficiary.academicResults.length],
             ["المهارات", beneficiary.skillEvaluations.length],
+            ["الأنشطة", beneficiary.activityLogs.length],
             ["آخر تحديث", beneficiary.updatedAt.toLocaleDateString("ar-MA")]
-          ].map(([label, value]) => <div key={label} className="rounded-xl bg-white/5 px-3 py-2.5"><p className="text-[11px] text-slate-400">{label}</p><p className="mt-1 text-base font-bold">{value}</p></div>)}
+          ].map(([label, value]) => <div key={label} className="rounded-xl border border-white/5 bg-white/5 px-3 py-2.5"><p className="text-[11px] text-slate-400">{label}</p><p className="mt-1 text-base font-bold">{value}</p></div>)}
         </div>
 
         <div className="border-t border-white/10 px-4 py-4">
@@ -195,8 +237,36 @@ export default async function BeneficiaryProfilePage({ params }: { params: { id:
         <BeneficiaryProfileForm beneficiary={beneficiary} />
       </section>
 
+      <section id="documents" className="mt-10 scroll-mt-40 border-t border-slate-200 pt-8">
+        <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div><p className="text-sm font-semibold text-blue-600">الوثائق الرقمية</p><h2 className="text-2xl font-bold">وثائق المستفيد</h2><p className="mt-2 text-slate-600">آخر الوثائق المحفوظة داخل الملف الإلكتروني.</p></div>
+          <Link href={`/beneficiaries/${beneficiary.id}/documents`} className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700"><Upload size={16} /> إدارة الوثائق</Link>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {beneficiary.documents.length ? beneficiary.documents.map((document) => (
+            <div key={document.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="flex items-start gap-3">
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-blue-50 text-blue-700"><FileText size={20} /></span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-bold text-slate-900">{document.title}</p>
+                  <p className="mt-1 truncate text-xs text-slate-500">{document.fileName}</p>
+                </div>
+              </div>
+              <div className="mt-4 flex flex-wrap gap-2 text-[11px]">
+                <span className="rounded-full bg-slate-100 px-2.5 py-1 font-semibold text-slate-600">{documentCategoryLabels[document.category] || document.category}</span>
+                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-500">{formatBytes(document.sizeBytes)}</span>
+              </div>
+              <div className="mt-3 border-t border-slate-100 pt-3 text-xs text-slate-500">
+                <p>{document.uploadedByName ? `رفعها: ${document.uploadedByName}` : "رُفعت إلكترونيًا"}</p>
+                <p className="mt-1">{document.createdAt.toLocaleDateString("ar-MA")}</p>
+              </div>
+            </div>
+          )) : <div className="md:col-span-2 xl:col-span-3 rounded-3xl border border-dashed border-slate-300 bg-white p-8 text-center"><FolderOpen className="mx-auto text-slate-400" size={36} /><p className="mt-3 font-semibold text-slate-700">لا توجد وثائق مرفوعة بعد.</p><p className="mt-1 text-sm text-slate-500">يمكن إضافة الوثائق من زر إدارة الوثائق.</p></div>}
+        </div>
+      </section>
+
       <section id="diagnosis" className="mt-10 scroll-mt-40 border-t border-slate-200 pt-8">
-        <div className="mb-5"><p className="text-sm font-semibold text-blue-600">القسم الثاني</p><h2 className="text-2xl font-bold">القبول والتشخيص والتوجيه</h2><p className="mt-2 text-slate-600">توثيق المقابلة والاختبارات والميولات المهنية وقرار لجنة القبول.</p></div>
+        <div className="mb-5"><p className="text-sm font-semibold text-blue-600">القبول والتوجيه</p><h2 className="text-2xl font-bold">المقابلة والتشخيص وقرار اللجنة</h2><p className="mt-2 text-slate-600">توثيق المقابلة والاختبارات والميولات المهنية وقرار لجنة القبول.</p></div>
         <AdmissionAssessmentForm beneficiaryId={beneficiary.id} assessment={beneficiary.admissionAssessment} />
       </section>
 
@@ -229,6 +299,26 @@ export default async function BeneficiaryProfilePage({ params }: { params: { id:
       <section id="integration" className="mt-5 scroll-mt-40 rounded-3xl bg-slate-950 p-6 text-white shadow-sm">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between"><div><p className="text-sm font-semibold text-blue-300">المرحلة النهائية</p><h3 className="mt-1 text-2xl font-bold">الإدماج المهني والتتبع</h3><p className="mt-2 max-w-2xl text-sm text-slate-300">{beneficiary.careerGoal || "لم يُحدد الهدف المهني بعد."}</p></div><div className="grid min-w-64 grid-cols-2 gap-3"><div className="rounded-2xl bg-white/10 p-4"><p className="text-xs text-slate-300">التدريب</p><p className="mt-1 font-bold">{beneficiary.internships[0]?.organizationName || "غير مسجل"}</p></div><div className="rounded-2xl bg-white/10 p-4"><p className="text-xs text-slate-300">المشروع</p><p className="mt-1 font-bold">{beneficiary.vocationalProjects[0]?.status || "غير مسجل"}</p></div></div></div>
         <Link href="/professional-integration" className="mt-5 inline-flex text-sm font-semibold text-blue-300">فتح وحدة الإدماج ←</Link>
+      </section>
+
+      <section id="activity" className="mt-10 scroll-mt-40 border-t border-slate-200 pt-8">
+        <div className="mb-5"><p className="text-sm font-semibold text-blue-600">التتبع الزمني</p><h2 className="text-2xl font-bold">سجل العمليات والأنشطة</h2><p className="mt-2 text-slate-600">أحدث العمليات المرتبطة بملف المستفيد منذ التسجيل.</p></div>
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+          {beneficiary.activityLogs.length ? <div className="space-y-1">{beneficiary.activityLogs.map((activity, index) => (
+            <div key={activity.id} className="relative flex gap-4 pb-6 last:pb-0">
+              {index < beneficiary.activityLogs.length - 1 && <span className="absolute right-[17px] top-9 h-[calc(100%-1.5rem)] w-px bg-slate-200" />}
+              <span className="relative z-10 mt-1 grid h-9 w-9 shrink-0 place-items-center rounded-full border-4 border-white bg-blue-600 text-white shadow-sm"><History size={14} /></span>
+              <div className="min-w-0 flex-1 rounded-2xl bg-slate-50 px-4 py-3">
+                <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                  <div><p className="font-bold text-slate-900">{activity.title}</p><p className="mt-1 text-xs font-semibold text-blue-700">{activityCategoryLabels[activity.category] || activity.category}</p></div>
+                  <time className="text-xs text-slate-500">{activity.eventDate.toLocaleDateString("ar-MA")} · {activity.eventDate.toLocaleTimeString("ar-MA", { hour: "2-digit", minute: "2-digit" })}</time>
+                </div>
+                {activity.description && <p className="mt-2 text-sm leading-6 text-slate-600">{activity.description}</p>}
+                {activity.actorName && <p className="mt-2 text-xs text-slate-500">بواسطة: {activity.actorName}</p>}
+              </div>
+            </div>
+          ))}</div> : <div className="py-8 text-center"><History className="mx-auto text-slate-400" size={36} /><p className="mt-3 font-semibold text-slate-700">لا توجد أنشطة مسجلة بعد.</p></div>}
+        </div>
       </section>
     </AppShell>
   );
