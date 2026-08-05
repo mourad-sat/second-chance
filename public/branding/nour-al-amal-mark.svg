@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 420" role="img" aria-labelledby="title desc">
+  <title id="title">شعار جمعية نور الأمل</title>
+  <desc id="desc">الهوية البصرية لجمعية نور الأمل بالأزرق والأخضر</desc>
+  <defs>
+    <linearGradient id="blue" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2684ff"/>
+      <stop offset="1" stop-color="#063b9d"/>
+    </linearGradient>
+    <linearGradient id="green" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#36c51b"/>
+      <stop offset="1" stop-color="#11870d"/>
+    </linearGradient>
+  </defs>
+  <rect width="520" height="420" rx="36" fill="#fff"/>
+  <circle cx="260" cy="58" r="29" fill="url(#blue)"/>
+  <path d="M198 94c-34 26-42 93-17 146 12 25 29 45 50 60l19-22c-25-21-38-48-42-77-4-30 2-61 20-85z" fill="url(#blue)"/>
+  <path d="M322 94c34 26 42 93 17 146-12 25-29 45-50 60l-19-22c25-21 38-48 42-77 4-30-2-61-20-85z" fill="url(#blue)"/>
+  <path d="M198 94l29 23 13-16-29-23zM322 94l-29 23-13-16 29-23zM209 238l20 24 15-18-20-24zM311 238l-20 24-15-18 20-24z" fill="url(#green)"/>
+  <path d="M46 196c28 52 87 76 143 61 26-7 48-20 66-38l-19-21c-34 33-72 45-113 35-31-8-57-26-77-54z" fill="url(#blue)"/>
+  <path d="M474 196c-28 52-87 76-143 61-26-7-48-20-66-38l19-21c34 33 72 45 113 35 31-8 57-26 77-54z" fill="url(#blue)"/>
+  <path d="M170 252c23 41 64 61 90 61s67-20 90-61l-24-13c-18 30-43 45-66 45s-48-15-66-45z" fill="url(#blue)"/>
+  <text x="260" y="350" text-anchor="middle" direction="rtl" font-family="Arial, sans-serif" font-size="45" font-weight="800" fill="#063b9d">جمعية نور الأمل</text>
+  <text x="260" y="388" text-anchor="middle" direction="rtl" font-family="Arial, sans-serif" font-size="20" font-weight="700" fill="#188f13">التأهيل • التمكين • الإدماج</text>
+</svg>
