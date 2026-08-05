@@ -16,7 +16,7 @@ export default function PublicRegistrationPage() {
         <header className="mb-6 overflow-hidden rounded-[2rem] border border-blue-100 bg-white shadow-xl shadow-slate-200/60">
           <div className="border-t-[7px] border-blue-800 px-3 pt-3 sm:px-6 sm:pt-5">
             <img
-              src="/branding/registration-header.svg"
+              src="/api/public-registration/header-image"
               alt="شعارات وزارة التربية الوطنية وجمعية نور الأمل وقطاع الشباب"
               width={886}
               height={232}
