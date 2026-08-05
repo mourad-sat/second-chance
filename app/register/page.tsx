@@ -2,7 +2,7 @@ import Link from "next/link";
 import { PublicRegistrationForm } from "@/components/PublicRegistrationForm";
 import { Clock3, Printer, ShieldCheck } from "lucide-react";
 
-const OFFICIAL_HEADER_URL = "https://i.ibb.co/BVzhsFV4/1.jpg";
+const OFFICIAL_HEADER_URL = "https://i.ibb.co/Wvn9YX6y/1235.png";
 
 export const metadata = {
   title: "التسجيل القبلي | برنامج الفرصة الثانية",
@@ -20,11 +20,11 @@ export default function PublicRegistrationPage() {
             <img
               src={OFFICIAL_HEADER_URL}
               alt="شعارات وزارة التربية الوطنية وجمعية نور الأمل وقطاع الشباب"
-              width={1600}
-              height={500}
+              width={2048}
+              height={512}
               loading="eager"
               referrerPolicy="no-referrer"
-              className="mx-auto block h-auto max-h-[310px] w-full object-contain"
+              className="mx-auto block h-auto max-h-[330px] w-full object-contain"
             />
           </div>
 
