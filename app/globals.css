@@ -2,6 +2,223 @@
 @tailwind components;
 @tailwind utilities;
 
-:root { color-scheme: light; }
-body { margin: 0; background: #f5f7fb; color: #172033; font-family: Arial, sans-serif; }
-* { box-sizing: border-box; }
+:root {
+  color-scheme: light;
+  --brand-950: #08255f;
+  --brand-900: #0b327a;
+  --brand-800: #10439a;
+  --brand-700: #1557c0;
+  --brand-600: #1d6be3;
+  --brand-100: #dbeafe;
+  --brand-50: #eff6ff;
+  --success: #159447;
+  --surface: rgba(255, 255, 255, 0.92);
+  --surface-solid: #ffffff;
+  --page: #f4f7fb;
+  --border: #dfe7f1;
+  --text: #15233c;
+  --muted: #66758d;
+  --shadow-sm: 0 8px 24px -18px rgba(15, 35, 70, 0.32);
+  --shadow-md: 0 22px 55px -32px rgba(15, 35, 70, 0.42);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  background: var(--page);
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 92% 4%, rgba(29, 107, 227, 0.09), transparent 28rem),
+    radial-gradient(circle at 8% 92%, rgba(21, 148, 71, 0.06), transparent 26rem),
+    linear-gradient(180deg, #f8fbff 0%, #f3f6fb 48%, #f7f9fc 100%);
+  color: var(--text);
+  font-family: "Noto Kufi Arabic", "Segoe UI", Tahoma, Arial, sans-serif;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: rgba(29, 107, 227, 0.2);
+  color: var(--brand-950);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #edf2f8;
+}
+
+::-webkit-scrollbar-thumb {
+  border: 2px solid #edf2f8;
+  border-radius: 999px;
+  background: #b9c7da;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #8fa3bd;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button,
+a {
+  transition-property: color, background-color, border-color, box-shadow, transform, opacity;
+  transition-duration: 180ms;
+  transition-timing-function: ease;
+}
+
+button:active:not(:disabled),
+a:active {
+  transform: translateY(1px);
+}
+
+input,
+select,
+textarea {
+  border-color: var(--border);
+  background-color: rgba(255, 255, 255, 0.96);
+  color: var(--text);
+  box-shadow: 0 1px 2px rgba(15, 35, 70, 0.03);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #97a4b7;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: #60a5fa !important;
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.12) !important;
+}
+
+button:focus-visible,
+a:focus-visible {
+  outline: 3px solid rgba(59, 130, 246, 0.3);
+  outline-offset: 3px;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+thead th {
+  letter-spacing: 0.01em;
+}
+
+tbody tr {
+  transition: background-color 160ms ease;
+}
+
+img {
+  max-width: 100%;
+}
+
+.app-surface {
+  border: 1px solid rgba(218, 227, 239, 0.9);
+  border-radius: 1.5rem;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  backdrop-filter: blur(16px);
+}
+
+.app-card {
+  border: 1px solid rgba(218, 227, 239, 0.9);
+  border-radius: 1.25rem;
+  background: #fff;
+  box-shadow: var(--shadow-sm);
+  transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+}
+
+.app-card:hover {
+  border-color: #c8d8ed;
+  box-shadow: var(--shadow-md);
+}
+
+.app-title {
+  color: #0f1f38;
+  font-weight: 900;
+  letter-spacing: -0.025em;
+}
+
+.app-eyebrow {
+  color: var(--brand-700);
+  font-size: 0.75rem;
+  font-weight: 900;
+}
+
+.app-muted {
+  color: var(--muted);
+}
+
+.glass-panel {
+  border: 1px solid rgba(255, 255, 255, 0.68);
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: var(--shadow-md);
+  backdrop-filter: blur(20px);
+}
+
+.page-enter {
+  animation: pageEnter 360ms ease-out both;
+}
+
+@keyframes pageEnter {
+  from {
+    opacity: 0;
+    transform: translateY(7px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@media print {
+  body {
+    background: #fff !important;
+  }
+
+  header,
+  aside,
+  nav,
+  .print\:hidden {
+    box-shadow: none !important;
+  }
+}
