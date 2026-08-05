@@ -11,6 +11,7 @@ import {
   GraduationCap,
   HeartHandshake,
   History,
+  LayoutDashboard,
   Printer,
   UserRound,
   X
@@ -86,6 +87,13 @@ export function BeneficiaryQuickActions({
             </header>
 
             <div className="grid flex-1 grid-cols-2 gap-3 overflow-y-auto p-4">
+              <Link
+                href={`/beneficiaries/${beneficiaryId}/overview`}
+                onClick={() => setOpen(false)}
+                className="col-span-2 flex min-h-24 items-center justify-center gap-3 rounded-2xl border border-blue-200 bg-gradient-to-l from-blue-700 to-cyan-700 p-4 text-center text-sm font-black text-white shadow-lg shadow-blue-200 transition hover:from-blue-800 hover:to-cyan-800"
+              >
+                <LayoutDashboard size={25} /> مركز قيادة المستفيد 2.0
+              </Link>
               <Link
                 href={`/beneficiaries/${beneficiaryId}/smart-orientation`}
                 onClick={() => setOpen(false)}
