@@ -1,40 +1,22 @@
 import { AppShell } from "@/components/AppShell";
-import { PrintReportButton } from "@/components/PrintReportButton";
+import { ExecutiveReportExport } from "@/components/ExecutiveReportExport";
 import { prisma } from "@/lib/prisma";
 import { BarChart3, BriefcaseBusiness, CalendarCheck2, GraduationCap, HeartHandshake, Users } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
-function percent(value: number, total: number) {
-  return total > 0 ? Math.round((value / total) * 100) : 0;
-}
+function percent(value: number, total: number) { return total > 0 ? Math.round((value / total) * 100) : 0; }
 
 export default async function ReportsPage() {
-  const [
-    beneficiaries,
-    enrolled,
-    completed,
-    groups,
-    attendance,
-    present,
-    absent,
-    academicResults,
-    supportPlans,
-    openSocialCases,
-    vocationalPrograms,
-    skillEvaluations,
-    projects,
-    internships,
-    completedInternships,
-    statusGroups,
-    attendanceGroups
-  ] = await Promise.all([
-    prisma.beneficiary.count(),
-    prisma.beneficiary.count({ where: { status: "ENROLLED" } }),
-    prisma.beneficiary.count({ where: { status: "COMPLETED" } }),
+  const [beneficiaries, archived, deleted, enrolled, completed, groups, attendance, present, absent, results, supportPlans, socialCases, programs, skills, projects, internships, completedInternships, statusGroups] = await Promise.all([
+    prisma.beneficiary.count({ where: { archivedAt: null, deletedAt: null } }),
+    prisma.beneficiary.count({ where: { archivedAt: { not: null }, deletedAt: null } }),
+    prisma.beneficiary.count({ where: { deletedAt: { not: null } } }),
+    prisma.beneficiary.count({ where: { status: "ENROLLED", archivedAt: null, deletedAt: null } }),
+    prisma.beneficiary.count({ where: { status: "COMPLETED", archivedAt: null, deletedAt: null } }),
     prisma.learningGroup.count({ where: { isActive: true } }),
     prisma.attendanceRecord.count(),
-    prisma.attendanceRecord.count({ where: { status: "PRESENT" } }),
+    prisma.attendanceRecord.count({ where: { status: { in: ["PRESENT", "LATE"] } } }),
     prisma.attendanceRecord.count({ where: { status: "ABSENT" } }),
     prisma.academicResult.count(),
     prisma.academicSupportPlan.count({ where: { status: { in: ["PLANNED", "IN_PROGRESS"] } } }),
@@ -44,146 +26,45 @@ export default async function ReportsPage() {
     prisma.vocationalProject.count(),
     prisma.internship.count(),
     prisma.internship.count({ where: { status: "COMPLETED" } }),
-    prisma.beneficiary.groupBy({ by: ["status"], _count: { _all: true } }),
-    prisma.attendanceRecord.groupBy({ by: ["status"], _count: { _all: true } })
+    prisma.beneficiary.groupBy({ by: ["status"], where: { archivedAt: null, deletedAt: null }, _count: { _all: true } })
   ]);
 
-  const statusLabels: Record<string, string> = {
-    PRE_REGISTERED: "مسجل أوليًا",
-    UNDER_REVIEW: "قيد الدراسة",
-    WAITLISTED: "لائحة الانتظار",
-    ACCEPTED: "مقبول",
-    REJECTED: "غير مقبول",
-    ENROLLED: "متمدرس",
-    WITHDRAWN: "منسحب",
-    COMPLETED: "مستكمل"
-  };
+  const labels: Record<string, string> = { PRE_REGISTERED: "مسجل أوليًا", UNDER_REVIEW: "قيد الدراسة", WAITLISTED: "لائحة الانتظار", ACCEPTED: "مقبول", REJECTED: "غير مقبول", ENROLLED: "متمدرس", WITHDRAWN: "منسحب", COMPLETED: "مستكمل" };
+  const attendanceRate = percent(present, attendance);
+  const integrationRate = percent(completedInternships, internships);
+  const exportRows = [
+    { section: "المستفيدون", indicator: "الملفات النشطة", value: beneficiaries }, { section: "المستفيدون", indicator: "المؤرشفون", value: archived }, { section: "المستفيدون", indicator: "سلة المحذوفات", value: deleted },
+    { section: "البرنامج", indicator: "المتمدرسون", value: enrolled }, { section: "البرنامج", indicator: "المستكملون", value: completed }, { section: "البرنامج", indicator: "المجموعات النشطة", value: groups },
+    { section: "الحضور", indicator: "نسبة الحضور", value: `${attendanceRate}%` }, { section: "الحضور", indicator: "الغيابات", value: absent },
+    { section: "التتبع", indicator: "النتائج الأكاديمية", value: results }, { section: "التتبع", indicator: "خطط الدعم المفتوحة", value: supportPlans }, { section: "التتبع", indicator: "الحالات الاجتماعية المفتوحة", value: socialCases },
+    { section: "التكوين", indicator: "البرامج النشطة", value: programs }, { section: "التكوين", indicator: "تقييمات الكفايات", value: skills }, { section: "التكوين", indicator: "المشاريع المهنية", value: projects }, { section: "الإدماج", indicator: "نسبة إتمام التداريب", value: `${integrationRate}%` }
+  ];
 
-  const attendanceLabels: Record<string, string> = {
-    PRESENT: "حاضر",
-    ABSENT: "غائب",
-    LATE: "متأخر",
-    EXCUSED: "غياب مبرر"
-  };
-
-  const mainCards = [
-    { label: "إجمالي المستفيدين", value: beneficiaries, note: `${enrolled} متمدرسًا حاليًا`, icon: Users },
-    { label: "المجموعات النشيطة", value: groups, note: "مجموعات الموسم الجاري", icon: GraduationCap },
-    { label: "نسبة الحضور العامة", value: `${percent(present, attendance)}%`, note: `${present} حضور من أصل ${attendance}`, icon: CalendarCheck2 },
-    { label: "التداريب المكتملة", value: completedInternships, note: `${internships} تدريبًا مسجلًا`, icon: BriefcaseBusiness }
+  const cards = [
+    { label: "المستفيدون النشطون", value: beneficiaries, note: `${enrolled} متمدرسًا`, icon: Users, tone: "bg-blue-50 text-blue-700" },
+    { label: "المجموعات النشطة", value: groups, note: "الموسم الجاري", icon: GraduationCap, tone: "bg-violet-50 text-violet-700" },
+    { label: "نسبة الحضور", value: `${attendanceRate}%`, note: `${present} حضورًا من ${attendance}`, icon: CalendarCheck2, tone: "bg-emerald-50 text-emerald-700" },
+    { label: "إتمام التداريب", value: `${integrationRate}%`, note: `${completedInternships} مكتمل من ${internships}`, icon: BriefcaseBusiness, tone: "bg-amber-50 text-amber-700" }
   ];
 
   return (
     <AppShell>
-      <div className="mx-auto max-w-7xl print:max-w-none">
-        <header className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div>
-            <p className="mb-2 text-sm font-semibold text-blue-600">القيادة واتخاذ القرار</p>
-            <h2 className="text-3xl font-bold text-slate-900">التقرير التنفيذي للبرنامج</h2>
-            <p className="mt-2 text-slate-500">مؤشرات حية مستخرجة مباشرة من قاعدة بيانات منصة الفرصة الثانية.</p>
-          </div>
-          <PrintReportButton />
+      <div className="mx-auto max-w-7xl space-y-6 print:max-w-none">
+        <header className="overflow-hidden rounded-[2rem] bg-gradient-to-l from-slate-950 via-blue-950 to-indigo-950 p-6 text-white shadow-xl md:p-8">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between"><div><p className="text-sm font-black text-cyan-300">Executive Reports 3.0</p><h1 className="mt-2 text-3xl font-black">التقرير التنفيذي للبرنامج</h1><p className="mt-3 text-sm text-slate-300">مؤشرات حية من قاعدة البيانات مع تصدير مباشر إلى Excel/CSV وطباعة محسنة.</p></div><ExecutiveReportExport rows={exportRows} /></div>
         </header>
 
-        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {mainCards.map(({ label, value, note, icon: Icon }) => (
-            <article key={label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-sm font-medium text-slate-500">{label}</p>
-                  <p className="mt-2 text-3xl font-bold text-slate-900">{value}</p>
-                  <p className="mt-2 text-xs text-slate-500">{note}</p>
-                </div>
-                <div className="rounded-xl bg-blue-50 p-3 text-blue-600"><Icon size={22} /></div>
-              </div>
-            </article>
-          ))}
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{cards.map(({ label, value, note, icon: Icon, tone }) => <article key={label} className="app-card p-5"><div className="flex items-start justify-between"><div><p className="text-sm font-bold text-slate-500">{label}</p><p className="mt-2 text-3xl font-black text-slate-950">{value}</p><p className="mt-2 text-xs text-slate-500">{note}</p></div><span className={`grid h-12 w-12 place-items-center rounded-2xl ${tone}`}><Icon size={22} /></span></div></article>)}</section>
+
+        <section className="grid gap-5 xl:grid-cols-[1.25fr_0.75fr]">
+          <article className="app-card p-6"><div className="mb-5 flex items-center gap-3"><BarChart3 className="text-blue-700" /><div><h2 className="text-xl font-black">توزيع وضعيات الملفات النشطة</h2><p className="text-sm text-slate-500">لا يشمل الأرشيف وسلة المحذوفات.</p></div></div><div className="space-y-4">{statusGroups.map((item) => <div key={item.status}><div className="mb-2 flex justify-between text-sm"><span className="font-bold text-slate-700">{labels[item.status] || item.status}</span><strong>{item._count._all}</strong></div><div className="h-2.5 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-gradient-to-l from-blue-700 to-cyan-400" style={{ width: `${Math.max(3, percent(item._count._all, beneficiaries))}%` }} /></div></div>)}</div></article>
+          <article className="app-card p-6"><h2 className="text-xl font-black">حوكمة البيانات</h2><div className="mt-5 space-y-3"><div className="rounded-2xl bg-amber-50 p-4"><p className="text-sm text-amber-700">الأرشيف</p><p className="mt-1 text-3xl font-black text-amber-950">{archived}</p></div><div className="rounded-2xl bg-red-50 p-4"><p className="text-sm text-red-700">سلة المحذوفات</p><p className="mt-1 text-3xl font-black text-red-950">{deleted}</p></div><div className="rounded-2xl bg-emerald-50 p-4"><p className="text-sm text-emerald-700">المستكملون</p><p className="mt-1 text-3xl font-black text-emerald-950">{completed}</p></div></div></article>
         </section>
 
-        <section className="mt-6 grid gap-6 xl:grid-cols-2">
-          <article className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <div className="mb-5 flex items-center gap-3">
-              <div className="rounded-xl bg-slate-100 p-3 text-slate-700"><BarChart3 size={21} /></div>
-              <div>
-                <h3 className="text-lg font-bold text-slate-900">توزيع وضعيات المستفيدين</h3>
-                <p className="text-sm text-slate-500">الوضعية الحالية لكل الملفات المسجلة</p>
-              </div>
-            </div>
-            <div className="space-y-3">
-              {statusGroups.map((item) => {
-                const value = item._count._all;
-                return (
-                  <div key={item.status}>
-                    <div className="mb-1 flex items-center justify-between text-sm">
-                      <span className="font-medium text-slate-700">{statusLabels[item.status]}</span>
-                      <span className="font-bold text-slate-900">{value}</span>
-                    </div>
-                    <div className="h-2 overflow-hidden rounded-full bg-slate-100">
-                      <div className="h-full rounded-full bg-blue-600" style={{ width: `${percent(value, beneficiaries)}%` }} />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </article>
+        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4"><article className="app-card p-5"><p className="text-sm text-slate-500">النتائج الأكاديمية</p><p className="mt-2 text-3xl font-black">{results}</p></article><article className="app-card p-5"><p className="text-sm text-slate-500">خطط الدعم المفتوحة</p><p className="mt-2 text-3xl font-black">{supportPlans}</p></article><article className="app-card p-5"><HeartHandshake className="text-rose-600" /><p className="mt-3 text-sm text-slate-500">المواكبات المفتوحة</p><p className="mt-2 text-3xl font-black">{socialCases}</p></article><article className="app-card p-5"><p className="text-sm text-slate-500">تقييمات الكفايات</p><p className="mt-2 text-3xl font-black">{skills}</p></article></section>
 
-          <article className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <div className="mb-5 flex items-center gap-3">
-              <div className="rounded-xl bg-emerald-50 p-3 text-emerald-700"><CalendarCheck2 size={21} /></div>
-              <div>
-                <h3 className="text-lg font-bold text-slate-900">مؤشرات المواظبة</h3>
-                <p className="text-sm text-slate-500">توزيع جميع سجلات الحضور والغياب</p>
-              </div>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {attendanceGroups.map((item) => (
-                <div key={item.status} className="rounded-xl bg-slate-50 p-4">
-                  <p className="text-sm text-slate-500">{attendanceLabels[item.status]}</p>
-                  <p className="mt-2 text-2xl font-bold text-slate-900">{item._count._all}</p>
-                  <p className="mt-1 text-xs text-slate-500">{percent(item._count._all, attendance)}% من السجلات</p>
-                </div>
-              ))}
-            </div>
-            <div className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800">إجمالي الغياب غير المبرر: <strong>{absent}</strong></div>
-          </article>
-        </section>
-
-        <section className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-sm text-slate-500">النتائج الأكاديمية</p>
-            <p className="mt-2 text-3xl font-bold text-slate-900">{academicResults}</p>
-            <p className="mt-2 text-xs text-slate-500">نتيجة تقويم مسجلة</p>
-          </article>
-          <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-sm text-slate-500">خطط الدعم المفتوحة</p>
-            <p className="mt-2 text-3xl font-bold text-slate-900">{supportPlans}</p>
-            <p className="mt-2 text-xs text-slate-500">خطط مبرمجة أو قيد الإنجاز</p>
-          </article>
-          <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex items-center justify-between"><p className="text-sm text-slate-500">المواكبة الاجتماعية</p><HeartHandshake size={19} className="text-rose-500" /></div>
-            <p className="mt-2 text-3xl font-bold text-slate-900">{openSocialCases}</p>
-            <p className="mt-2 text-xs text-slate-500">حالات مفتوحة أو قيد المتابعة</p>
-          </article>
-          <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-sm text-slate-500">المستكملون</p>
-            <p className="mt-2 text-3xl font-bold text-slate-900">{completed}</p>
-            <p className="mt-2 text-xs text-slate-500">{percent(completed, beneficiaries)}% من مجموع المستفيدين</p>
-          </article>
-        </section>
-
-        <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h3 className="text-lg font-bold text-slate-900">مؤشرات التكوين والإدماج المهني</h3>
-          <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <div className="rounded-xl bg-blue-50 p-4"><p className="text-sm text-blue-700">الوحدات المهنية النشيطة</p><p className="mt-2 text-2xl font-bold text-blue-950">{vocationalPrograms}</p></div>
-            <div className="rounded-xl bg-violet-50 p-4"><p className="text-sm text-violet-700">تقييمات الكفايات</p><p className="mt-2 text-2xl font-bold text-violet-950">{skillEvaluations}</p></div>
-            <div className="rounded-xl bg-amber-50 p-4"><p className="text-sm text-amber-700">المشاريع المهنية</p><p className="mt-2 text-2xl font-bold text-amber-950">{projects}</p></div>
-            <div className="rounded-xl bg-emerald-50 p-4"><p className="text-sm text-emerald-700">نسبة إتمام التداريب</p><p className="mt-2 text-2xl font-bold text-emerald-950">{percent(completedInternships, internships)}%</p></div>
-          </div>
-        </section>
-
-        <footer className="mt-8 hidden border-t border-slate-200 pt-4 text-xs text-slate-500 print:block">
-          تقرير مولد آليًا من منصة تدبير برنامج الفرصة الثانية.
-        </footer>
+        <section className="app-card p-6"><h2 className="text-xl font-black">التكوين والإدماج المهني</h2><div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><div className="rounded-2xl bg-blue-50 p-4"><p className="text-sm text-blue-700">البرامج المهنية</p><p className="mt-2 text-2xl font-black text-blue-950">{programs}</p></div><div className="rounded-2xl bg-violet-50 p-4"><p className="text-sm text-violet-700">تقييمات الكفايات</p><p className="mt-2 text-2xl font-black text-violet-950">{skills}</p></div><div className="rounded-2xl bg-amber-50 p-4"><p className="text-sm text-amber-700">المشاريع المهنية</p><p className="mt-2 text-2xl font-black text-amber-950">{projects}</p></div><div className="rounded-2xl bg-emerald-50 p-4"><p className="text-sm text-emerald-700">إتمام التداريب</p><p className="mt-2 text-2xl font-black text-emerald-950">{integrationRate}%</p></div></div></section>
+        <footer className="hidden border-t border-slate-200 pt-4 text-xs text-slate-500 print:block">تقرير مولد من منصة تدبير برنامج الفرصة الثانية — {new Date().toLocaleDateString("ar-MA")}</footer>
       </div>
     </AppShell>
   );
