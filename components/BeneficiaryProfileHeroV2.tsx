@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { LucideIcon } from "lucide-react";
 import {
   AlertTriangle,
   BrainCircuit,
@@ -9,7 +10,6 @@ import {
   ClipboardCheck,
   FileText,
   FolderOpen,
-  GraduationCap,
   HeartHandshake,
   Phone,
   UserRound
@@ -44,6 +44,19 @@ type Props = {
   stages: Stage[];
 };
 
+type Metric = {
+  label: string;
+  value: string | number;
+  icon: LucideIcon;
+};
+
+type SummaryCard = {
+  title: string;
+  text: string;
+  icon: LucideIcon;
+  className: string;
+};
+
 const riskStyles = {
   LOW: { label: "خطر منخفض", className: "border-emerald-200 bg-emerald-50 text-emerald-700" },
   MEDIUM: { label: "خطر متوسط", className: "border-amber-200 bg-amber-50 text-amber-700" },
@@ -52,6 +65,34 @@ const riskStyles = {
 
 export function BeneficiaryProfileHeroV2(props: Props) {
   const risk = riskStyles[props.risk];
+
+  const metrics: Metric[] = [
+    { label: "الحضور", value: `${props.attendanceRate}%`, icon: CalendarCheck },
+    { label: "الغيابات", value: props.absenceCount, icon: AlertTriangle },
+    { label: "الوثائق", value: props.documentsCount, icon: FolderOpen },
+    { label: "المتابعات", value: props.socialFollowUpsCount, icon: HeartHandshake }
+  ];
+
+  const summaryCards: SummaryCard[] = [
+    {
+      title: "نقاط القوة",
+      text: props.strengths || "لم تُسجل نقاط القوة بعد.",
+      icon: UserRound,
+      className: "bg-emerald-50 text-emerald-800"
+    },
+    {
+      title: "الاحتياجات ذات الأولوية",
+      text: props.priorityNeeds || "لم تُحدد الاحتياجات بعد.",
+      icon: HeartHandshake,
+      className: "bg-amber-50 text-amber-800"
+    },
+    {
+      title: "الهدف المهني",
+      text: props.careerGoal || "لم يُحدد الهدف المهني بعد.",
+      icon: BriefcaseBusiness,
+      className: "bg-blue-50 text-blue-800"
+    }
+  ];
 
   return (
     <div className="mb-6 space-y-5">
@@ -106,13 +147,8 @@ export function BeneficiaryProfileHeroV2(props: Props) {
         </div>
 
         <div className="grid grid-cols-2 gap-px bg-slate-100 sm:grid-cols-4">
-          {[
-            ["الحضور", `${props.attendanceRate}%`, CalendarCheck],
-            ["الغيابات", props.absenceCount, AlertTriangle],
-            ["الوثائق", props.documentsCount, FolderOpen],
-            ["المتابعات", props.socialFollowUpsCount, HeartHandshake]
-          ].map(([label, value, Icon]) => (
-            <div key={String(label)} className="bg-white p-4 sm:p-5">
+          {metrics.map(({ label, value, icon: Icon }) => (
+            <div key={label} className="bg-white p-4 sm:p-5">
               <div className="flex items-center gap-3">
                 <span className="grid h-10 w-10 place-items-center rounded-2xl bg-blue-50 text-blue-700"><Icon size={18} /></span>
                 <div><p className="text-xs font-semibold text-slate-500">{label}</p><p className="mt-1 text-xl font-black text-slate-950">{value}</p></div>
@@ -146,12 +182,8 @@ export function BeneficiaryProfileHeroV2(props: Props) {
         </div>
 
         <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
-          {[
-            ["نقاط القوة", props.strengths || "لم تُسجل نقاط القوة بعد.", UserRound, "bg-emerald-50 text-emerald-800"],
-            ["الاحتياجات ذات الأولوية", props.priorityNeeds || "لم تُحدد الاحتياجات بعد.", HeartHandshake, "bg-amber-50 text-amber-800"],
-            ["الهدف المهني", props.careerGoal || "لم يُحدد الهدف المهني بعد.", BriefcaseBusiness, "bg-blue-50 text-blue-800"]
-          ].map(([title, text, Icon, className]) => (
-            <div key={String(title)} className={`rounded-2xl p-4 ${className}`}>
+          {summaryCards.map(({ title, text, icon: Icon, className }) => (
+            <div key={title} className={`rounded-2xl p-4 ${className}`}>
               <div className="flex items-center gap-2"><Icon size={17} /><p className="text-xs font-black">{title}</p></div>
               <p className="mt-2 line-clamp-3 text-sm font-semibold leading-6">{text}</p>
             </div>
