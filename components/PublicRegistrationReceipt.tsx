@@ -3,6 +3,8 @@
 import { FormEvent, useState } from "react";
 import { CheckCircle2, Loader2, Printer, Search, ShieldCheck, UserRound } from "lucide-react";
 
+const OFFICIAL_HEADER_URL = "https://i.ibb.co/BVzhsFV4/1.jpg";
+
 type Receipt = {
   registrationNumber: string;
   registrationDate: string;
@@ -72,6 +74,18 @@ export function PublicRegistrationReceipt() {
         <>
           <article id="registration-receipt" className="mx-auto overflow-hidden rounded-[2rem] border border-blue-200 bg-white shadow-2xl shadow-slate-300/50">
             <div className="h-3 bg-gradient-to-l from-emerald-600 via-blue-700 to-blue-950" />
+
+            <div className="border-b border-slate-200 bg-white px-4 py-4 sm:px-7">
+              <img
+                src={OFFICIAL_HEADER_URL}
+                alt="شعارات وزارة التربية الوطنية وجمعية نور الأمل وقطاع الشباب"
+                width={886}
+                height={232}
+                crossOrigin="anonymous"
+                className="mx-auto block h-auto w-full max-w-[886px] object-contain"
+              />
+            </div>
+
             <header className="flex flex-col gap-5 bg-slate-950 px-7 py-6 text-white sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-sm font-bold text-emerald-300">جمعية نور الأمل</p>
@@ -139,10 +153,15 @@ export function PublicRegistrationReceipt() {
             max-width: none !important;
             box-shadow: none !important;
             border-radius: 0 !important;
+            break-inside: avoid !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }
-          @page { size: A4 portrait; margin: 12mm; }
+          #registration-receipt img {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          @page { size: A4 portrait; margin: 10mm; }
         }
       `}</style>
     </div>
