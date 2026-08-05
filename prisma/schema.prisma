@@ -149,6 +149,18 @@ model Beneficiary {
   profilePhotoUrl String?
   profilePhotoPathname String?
   personalProject String?
+  gender String?
+  email String?
+  birthPlace String?
+  commune String?
+  province String?
+  programExpectation String?
+  registrationGoals String?
+  careerChoice1 String?
+  careerChoice2 String?
+  careerChoice3 String?
+  careerChoiceReason String?
+  priorExperience String?
   firstName String
   lastName String
   birthDate DateTime?
