@@ -188,6 +188,12 @@ model Beneficiary {
   supportPlan String?
   careerGoal String?
   followUpNotes String?
+  archivedAt DateTime?
+  archivedReason String?
+  archivedByName String?
+  deletedAt DateTime?
+  deletedReason String?
+  deletedByName String?
   admissionAssessment AdmissionAssessment?
   enrollments GroupEnrollment[]
   attendanceRecords AttendanceRecord[]
@@ -201,6 +207,8 @@ model Beneficiary {
   documents Document[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  @@index([archivedAt])
+  @@index([deletedAt])
 }
 
 model AdmissionAssessment {
