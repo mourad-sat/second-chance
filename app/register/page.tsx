@@ -16,9 +16,11 @@ export default function PublicRegistrationPage() {
         <header className="mb-6 overflow-hidden rounded-[2rem] border border-blue-100 bg-white shadow-xl shadow-slate-200/60">
           <div className="border-t-[7px] border-blue-800 px-3 pt-3 sm:px-6 sm:pt-5">
             <img
-              src="/branding/registration-header.jpg"
+              src="/branding/registration-header.svg"
               alt="شعارات وزارة التربية الوطنية وجمعية نور الأمل وقطاع الشباب"
-              className="mx-auto h-auto w-full max-w-[886px] object-contain"
+              width={886}
+              height={232}
+              className="mx-auto block h-auto w-full max-w-[886px] object-contain"
             />
           </div>
           <div className="border-t border-slate-100 bg-gradient-to-b from-white to-blue-50/60 px-5 py-6 text-center sm:px-8 sm:py-8">
