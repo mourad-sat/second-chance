@@ -8,6 +8,7 @@ import {
   BarChart3,
   BellRing,
   BookOpenCheck,
+  BrainCircuit,
   BriefcaseBusiness,
   CalendarCheck2,
   ClipboardCheck,
@@ -37,7 +38,7 @@ const sections = [
     ]
   },
   { title: "التتبع والتكوين", items: [{ href: "/attendance", label: "الحضور والغياب", icon: CalendarCheck2 }, { href: "/academic-tracking", label: "التتبع التربوي", icon: BookOpenCheck }, { href: "/social-support", label: "المواكبة الاجتماعية", icon: HeartHandshake }, { href: "/vocational-training", label: "التكوين المهني", icon: GraduationCap }] },
-  { title: "القيادة والإدارة", items: [{ href: "/reports", label: "التقارير والإحصائيات", icon: BarChart3 }, { href: "/integration", label: "الإدماج المهني", icon: BriefcaseBusiness }, { href: "/settings", label: "الإعدادات", icon: Settings }] }
+  { title: "القيادة والإدارة", items: [{ href: "/intelligence", label: "مركز الذكاء والتحليل", icon: BrainCircuit }, { href: "/reports", label: "التقارير والإحصائيات", icon: BarChart3 }, { href: "/integration", label: "الإدماج المهني", icon: BriefcaseBusiness }, { href: "/settings", label: "الإعدادات", icon: Settings }] }
 ];
 
 type SidebarProps = { mobile?: boolean; onClose?: () => void; role?: string };
