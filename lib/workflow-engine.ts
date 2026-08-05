@@ -60,6 +60,12 @@ const allowedTransitions: Record<BeneficiaryStatus, BeneficiaryStatus[]> = {
   COMPLETED: []
 };
 
+const admissionDecisionStatuses = new Set<BeneficiaryStatus>([
+  BeneficiaryStatus.ACCEPTED,
+  BeneficiaryStatus.WAITLISTED,
+  BeneficiaryStatus.REJECTED
+]);
+
 const transitionLabels: Partial<Record<BeneficiaryStatus, string>> = {
   UNDER_REVIEW: "بدء دراسة الملف",
   ACCEPTED: "اعتماد القبول",
@@ -82,7 +88,7 @@ function readiness(snapshot: WorkflowSnapshot, nextStatus: BeneficiaryStatus) {
     if (!snapshot.lastEducationLevel) warnings.push("المستوى الدراسي غير محدد.");
   }
 
-  if ([BeneficiaryStatus.ACCEPTED, BeneficiaryStatus.WAITLISTED, BeneficiaryStatus.REJECTED].includes(nextStatus)) {
+  if (admissionDecisionStatuses.has(nextStatus)) {
     if (!snapshot.hasAdmissionAssessment) blockers.push("لم تُنجز مقابلة التشخيص والقبول.");
     if (snapshot.documentsCount === 0) warnings.push("لا توجد وثائق مرفوعة في الملف.");
     if (!snapshot.personalProject) warnings.push("المشروع الشخصي غير موثق.");
