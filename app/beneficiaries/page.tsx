@@ -1,5 +1,5 @@
 import { AppShell } from "@/components/AppShell";
-import { BeneficiariesManager } from "@/components/BeneficiariesManager";
+import { BeneficiariesManagerV3 } from "@/components/BeneficiariesManagerV3";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -63,7 +63,7 @@ export default async function BeneficiariesPage() {
 
   return (
     <AppShell>
-      <BeneficiariesManager beneficiaries={rows} />
+      <BeneficiariesManagerV3 beneficiaries={rows} />
     </AppShell>
   );
 }
