@@ -12,7 +12,9 @@ export async function POST(request: Request) {
     const body = await request.json();
     const beneficiaryId = typeof body.beneficiaryId === "string" ? body.beneficiaryId.trim() : "";
     const actorName = typeof body.actorName === "string" && body.actorName.trim() ? body.actorName.trim() : "مدير المنصة";
+    const responsibleName = typeof body.responsibleName === "string" && body.responsibleName.trim() ? body.responsibleName.trim() : actorName;
     const note = typeof body.note === "string" && body.note.trim() ? body.note.trim() : null;
+    const deadline = typeof body.deadline === "string" && body.deadline ? new Date(body.deadline) : null;
     const nextStatus = Object.values(BeneficiaryStatus).includes(body.nextStatus)
       ? (body.nextStatus as BeneficiaryStatus)
       : null;
@@ -21,8 +23,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: "المستفيد والمرحلة الجديدة إلزاميان." }, { status: 400 });
     }
 
+    if (deadline && Number.isNaN(deadline.getTime())) {
+      return NextResponse.json({ message: "الموعد النهائي غير صالح." }, { status: 400 });
+    }
+
     const beneficiary = await prisma.beneficiary.findUnique({
-      where: { id: beneficiaryId },
+      where: { id: beneficiaryId, archivedAt: null, deletedAt: null },
       include: {
         admissionAssessment: { select: { decision: true } },
         enrollments: { where: { leftAt: null }, select: { id: true }, take: 1 },
@@ -39,7 +45,7 @@ export async function POST(request: Request) {
     });
 
     if (!beneficiary) {
-      return NextResponse.json({ message: "المستفيد غير موجود." }, { status: 404 });
+      return NextResponse.json({ message: "المستفيد غير موجود أو غير نشط." }, { status: 404 });
     }
 
     const snapshot: WorkflowSnapshot = {
@@ -72,9 +78,8 @@ export async function POST(request: Request) {
       );
     }
 
-    const warningsText = validation.warnings.length
-      ? ` تنبيهات: ${validation.warnings.join(" ")}`
-      : "";
+    const warningsText = validation.warnings.length ? ` تنبيهات: ${validation.warnings.join(" ")}` : "";
+    const description = note || `تم تغيير وضعية الملف من ${workflowStatusLabels[beneficiary.status]} إلى ${workflowStatusLabels[nextStatus]}.${warningsText}`;
 
     await prisma.$transaction([
       prisma.beneficiary.update({ where: { id: beneficiary.id }, data: { status: nextStatus } }),
@@ -83,19 +88,33 @@ export async function POST(request: Request) {
           beneficiaryId: beneficiary.id,
           category: ActivityCategory.ADMISSION,
           title: `انتقال الملف إلى: ${workflowStatusLabels[nextStatus]}`,
-          description:
-            note ||
-            `تم تغيير وضعية الملف من ${workflowStatusLabels[beneficiary.status]} إلى ${workflowStatusLabels[nextStatus]}.${warningsText}`,
+          description,
           actorName,
           referenceType: "BENEFICIARY_WORKFLOW",
           referenceId: beneficiary.id,
-          referenceHref: `/beneficiaries/${beneficiary.id}/overview`
+          referenceHref: `/beneficiaries/${beneficiary.id}/workflow`,
+          metadata: {
+            fromStatus: beneficiary.status,
+            toStatus: nextStatus,
+            responsibleName,
+            deadline: deadline?.toISOString() || null,
+            warnings: validation.warnings,
+            completedAt: new Date().toISOString()
+          }
+        }
+      }),
+      prisma.auditLog.create({
+        data: {
+          action: "WORKFLOW_TRANSITION",
+          entityType: "Beneficiary",
+          entityId: beneficiary.id,
+          description: `${beneficiary.firstName} ${beneficiary.lastName}: ${workflowStatusLabels[beneficiary.status]} ← ${workflowStatusLabels[nextStatus]} · المسؤول: ${responsibleName}${deadline ? ` · الأجل: ${deadline.toISOString()}` : ""}`
         }
       })
     ]);
 
     return NextResponse.json({
-      message: "تم تحديث مسار الملف بنجاح.",
+      message: "تم تحديث مسار الملف وتسجيل المسؤول والموعد بنجاح.",
       status: nextStatus,
       warnings: validation.warnings
     });
