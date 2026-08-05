@@ -1,31 +1,42 @@
 import Link from "next/link";
-import { Database, Settings, ShieldCheck } from "lucide-react";
+import { Activity, Database, Gauge, Settings, ShieldCheck, Users } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
+import { prisma } from "@/lib/prisma";
 
-const cards = [
-  { title: "الإعدادات العامة", description: "اسم المؤسسة والموسم الدراسي والهوية", icon: Settings, href: null },
-  { title: "المستخدمون والصلاحيات", description: "إدارة الحسابات والأدوار ومسؤوليات فريق العمل", icon: ShieldCheck, href: "/settings/users" },
-  { title: "تخزين الوثائق", description: "متابعة Vercel Blob وترحيل الملفات القديمة بأمان", icon: Database, href: "/settings/storage" }
-];
+export const dynamic = "force-dynamic";
 
-export default function SettingsPage() {
+export default async function SettingsPage() {
+  const [users, activeUsers, auditLogs, documents] = await Promise.all([
+    prisma.user.count(),
+    prisma.user.count({ where: { isActive: true } }),
+    prisma.auditLog.count(),
+    prisma.document.count()
+  ]);
+
+  const cards = [
+    { title: "المستخدمون والصلاحيات", description: `${activeUsers} حسابًا نشطًا من أصل ${users}`, icon: Users, href: "/settings/users", tone: "bg-blue-50 text-blue-700" },
+    { title: "تخزين الوثائق", description: `${documents} وثيقة محفوظة داخل المنصة`, icon: Database, href: "/settings/storage", tone: "bg-emerald-50 text-emerald-700" },
+    { title: "سجل التدقيق", description: `${auditLogs} عملية إدارية موثقة`, icon: Activity, href: "/settings/audit", tone: "bg-violet-50 text-violet-700" },
+    { title: "جاهزية النظام", description: "فحص الوحدات والبيانات قبل النشر", icon: Gauge, href: "/settings/system-health", tone: "bg-amber-50 text-amber-700" }
+  ];
+
   return (
     <AppShell>
-      <div className="mx-auto max-w-7xl">
-        <p className="mb-2 text-sm font-semibold text-blue-600">إدارة المنصة</p>
-        <h2 className="text-3xl font-bold text-slate-900">الإعدادات</h2>
-        <p className="mt-2 text-slate-500">إعدادات الموسم والمستخدمين والبيانات الأساسية.</p>
+      <div className="mx-auto max-w-7xl space-y-6">
+        <header className="overflow-hidden rounded-[2rem] bg-gradient-to-l from-slate-950 via-blue-950 to-slate-900 p-6 text-white shadow-xl md:p-8">
+          <div className="flex items-center gap-4"><span className="grid h-14 w-14 place-items-center rounded-2xl bg-white/10"><Settings size={27} /></span><div><p className="text-sm font-black text-blue-300">Administration Center 3.0</p><h1 className="mt-1 text-3xl font-black">إدارة المنصة والحوكمة</h1><p className="mt-2 text-sm text-slate-300">مركز موحد للحسابات، التخزين، التدقيق، وفحص جاهزية الإصدار.</p></div></div>
+        </header>
 
-        <div className="mt-8 grid gap-4 md:grid-cols-3">
-          {cards.map(({ title, description, icon: Icon, href }) => (
-            <article key={title} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <div className="mb-4 inline-flex rounded-xl bg-slate-100 p-3 text-slate-700"><Icon size={22} /></div>
-              <h3 className="font-bold text-slate-900">{title}</h3>
-              <p className="mt-2 text-sm leading-6 text-slate-500">{description}</p>
-              {href ? <Link href={href} className="mt-5 inline-flex rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white">فتح الإدارة</Link> : <span className="mt-5 inline-flex rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-500">قريبًا</span>}
-            </article>
+        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {cards.map(({ title, description, icon: Icon, href, tone }) => (
+            <Link key={title} href={href} className="group rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:border-blue-200 hover:shadow-xl">
+              <span className={`grid h-12 w-12 place-items-center rounded-2xl ${tone}`}><Icon size={22} /></span>
+              <h2 className="mt-5 font-black text-slate-950">{title}</h2><p className="mt-2 text-sm leading-6 text-slate-500">{description}</p><span className="mt-5 inline-flex text-sm font-black text-blue-700">فتح الإدارة ←</span>
+            </Link>
           ))}
-        </div>
+        </section>
+
+        <section className="rounded-3xl border border-blue-200 bg-blue-50 p-5"><div className="flex items-start gap-3"><ShieldCheck className="mt-1 shrink-0 text-blue-700" /><div><h2 className="font-black text-blue-950">قاعدة الحوكمة</h2><p className="mt-2 text-sm leading-7 text-blue-900">تُسجل العمليات الحساسة في سجل التدقيق، وتبقى توصيات الذكاء الاصطناعي خاضعة للمراجعة البشرية، ولا يتم الحذف النهائي إلا من سلة المحذوفات.</p></div></div></section>
       </div>
     </AppShell>
   );
