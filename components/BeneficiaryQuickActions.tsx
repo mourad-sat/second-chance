@@ -3,6 +3,7 @@
 import Link from "next/link";
 import {
   BookOpenCheck,
+  BrainCircuit,
   BriefcaseBusiness,
   CalendarCheck,
   ClipboardCheck,
@@ -85,6 +86,13 @@ export function BeneficiaryQuickActions({
             </header>
 
             <div className="grid flex-1 grid-cols-2 gap-3 overflow-y-auto p-4">
+              <Link
+                href={`/beneficiaries/${beneficiaryId}/smart-orientation`}
+                onClick={() => setOpen(false)}
+                className="col-span-2 flex min-h-24 items-center justify-center gap-3 rounded-2xl border border-violet-200 bg-gradient-to-l from-violet-700 to-indigo-800 p-4 text-center text-sm font-black text-white shadow-lg shadow-violet-200 transition hover:from-violet-800 hover:to-indigo-900"
+              >
+                <BrainCircuit size={25} /> التوجيه الذكي للمسارات
+              </Link>
               {actions.map(([href, label, Icon]) => (
                 <a
                   key={href}
