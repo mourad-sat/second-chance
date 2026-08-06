@@ -1,21 +1,12 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import type { LucideIcon } from "lucide-react";
 import {
-  Activity,
-  AlertTriangle,
-  ArrowLeft,
-  BriefcaseBusiness,
-  CalendarCheck2,
-  ClipboardCheck,
-  FileText,
+  CalendarDays,
+  Check,
+  Eye,
   FolderOpen,
-  GraduationCap,
-  HeartHandshake,
-  ShieldAlert,
-  Sparkles,
-  TrendingUp,
-  UserPlus,
+  Plus,
+  UserRoundCheck,
   Users
 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
@@ -27,64 +18,91 @@ export const dynamic = "force-dynamic";
 const activeFileWhere = { archivedAt: null, deletedAt: null } as const;
 
 const statusLabels: Record<string, string> = {
-  PRE_REGISTERED: "مسجل أوليًا",
+  PRE_REGISTERED: "مسجل جديد",
   UNDER_REVIEW: "قيد الدراسة",
   WAITLISTED: "لائحة الانتظار",
   ACCEPTED: "مقبول",
-  REJECTED: "غير مقبول",
+  REJECTED: "مرفوض",
   ENROLLED: "متمدرس",
-  WITHDRAWN: "منسحب",
-  COMPLETED: "مستكمل"
+  WITHDRAWN: "منقطع",
+  COMPLETED: "مندمج"
 };
 
-const shortcuts: Array<{ href: string; label: string; icon: LucideIcon }> = [
-  { href: "/beneficiaries/new", label: "تسجيل مستفيد", icon: UserPlus },
-  { href: "/attendance", label: "تسجيل الحضور", icon: CalendarCheck2 },
-  { href: "/workflow", label: "سير الملفات", icon: Activity },
-  { href: "/reports", label: "التقارير التنفيذية", icon: FileText }
-];
+const statusColors: Record<string, string> = {
+  PRE_REGISTERED: "#0ea5e9",
+  UNDER_REVIEW: "#f59e0b",
+  WAITLISTED: "#8b5cf6",
+  ACCEPTED: "#10b981",
+  REJECTED: "#f43f5e",
+  ENROLLED: "#22c55e",
+  WITHDRAWN: "#ef4444",
+  COMPLETED: "#14b8a6"
+};
+
+const attendanceLabels: Record<string, string> = {
+  PRESENT: "حاضر",
+  LATE: "متأخر",
+  ABSENT: "غائب",
+  EXCUSED: "غياب مبرر"
+};
+
+const attendanceBadge: Record<string, string> = {
+  PRESENT: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  LATE: "border-amber-200 bg-amber-50 text-amber-700",
+  ABSENT: "border-rose-200 bg-rose-50 text-rose-700",
+  EXCUSED: "border-sky-200 bg-sky-50 text-sky-700"
+};
+
+const beneficiaryBadge: Record<string, string> = {
+  PRE_REGISTERED: "border-sky-200 bg-sky-50 text-sky-700",
+  UNDER_REVIEW: "border-amber-200 bg-amber-50 text-amber-700",
+  WAITLISTED: "border-violet-200 bg-violet-50 text-violet-700",
+  ACCEPTED: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  REJECTED: "border-rose-200 bg-rose-50 text-rose-700",
+  ENROLLED: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  WITHDRAWN: "border-rose-200 bg-rose-50 text-rose-700",
+  COMPLETED: "border-teal-200 bg-teal-50 text-teal-700"
+};
 
 function percent(value: number, total: number) {
   return total > 0 ? Math.round((value / total) * 100) : 0;
+}
+
+function formatDate(value: Date) {
+  return new Intl.DateTimeFormat("ar-MA", { day: "numeric", month: "short", year: "numeric" }).format(value);
 }
 
 export default async function DashboardPage() {
   const session = await currentSession();
   if (!session) redirect("/login");
 
-  const startOfDay = new Date();
+  const now = new Date();
+  const startOfDay = new Date(now);
   startOfDay.setHours(0, 0, 0, 0);
   const endOfDay = new Date(startOfDay);
   endOfDay.setDate(endOfDay.getDate() + 1);
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
 
   const [
-    beneficiaries,
-    activeBeneficiaries,
-    completedBeneficiaries,
-    groups,
-    programs,
+    totalBeneficiaries,
+    acceptedThisYear,
+    activeGroups,
     todayAttendance,
     presentToday,
-    openFollowUps,
-    urgentFollowUps,
-    activeInternships,
-    completedInternships,
-    documents,
     statusDistribution,
-    absenceGroups,
-    latestActivities,
-    newThisMonth,
-    openSupportPlans,
-    pendingAdmissions,
-    filesWithoutDocuments
+    recentBeneficiaries,
+    recentAttendance,
+    registrations
   ] = await Promise.all([
     prisma.beneficiary.count({ where: activeFileWhere }),
-    prisma.beneficiary.count({ where: { ...activeFileWhere, status: { in: ["ACCEPTED", "ENROLLED"] } } }),
-    prisma.beneficiary.count({ where: { ...activeFileWhere, status: "COMPLETED" } }),
+    prisma.beneficiary.count({
+      where: {
+        ...activeFileWhere,
+        status: { in: ["ACCEPTED", "ENROLLED", "COMPLETED"] },
+        updatedAt: { gte: new Date(now.getFullYear(), 0, 1) }
+      }
+    }),
     prisma.learningGroup.count({ where: { isActive: true } }),
-    prisma.vocationalProgram.count({ where: { isActive: true } }),
     prisma.attendanceRecord.count({
       where: { date: { gte: startOfDay, lt: endOfDay }, beneficiary: activeFileWhere }
     }),
@@ -95,161 +113,194 @@ export default async function DashboardPage() {
         beneficiary: activeFileWhere
       }
     }),
-    prisma.socialFollowUp.count({
-      where: { status: { in: ["OPEN", "IN_PROGRESS"] }, beneficiary: activeFileWhere }
+    prisma.beneficiary.groupBy({
+      by: ["status"],
+      where: activeFileWhere,
+      _count: { _all: true }
     }),
-    prisma.socialFollowUp.count({
-      where: { priority: "URGENT", status: { in: ["OPEN", "IN_PROGRESS"] }, beneficiary: activeFileWhere }
-    }),
-    prisma.internship.count({ where: { status: "ACTIVE", beneficiary: activeFileWhere } }),
-    prisma.internship.count({ where: { status: "COMPLETED", beneficiary: activeFileWhere } }),
-    prisma.document.count({ where: { beneficiary: activeFileWhere } }),
-    prisma.beneficiary.groupBy({ by: ["status"], where: activeFileWhere, _count: { _all: true } }),
-    prisma.attendanceRecord.groupBy({
-      by: ["beneficiaryId"],
-      where: { status: "ABSENT", beneficiary: activeFileWhere },
-      _count: { _all: true },
-      orderBy: { _count: { beneficiaryId: "desc" } },
-      take: 8
-    }),
-    prisma.activityLog.findMany({
-      where: { beneficiary: activeFileWhere },
+    prisma.beneficiary.findMany({
+      where: activeFileWhere,
+      orderBy: { createdAt: "desc" },
+      take: 6,
       select: {
         id: true,
-        title: true,
-        category: true,
-        eventDate: true,
-        beneficiary: { select: { id: true, firstName: true, lastName: true } }
-      },
-      orderBy: { eventDate: "desc" },
-      take: 8
+        firstName: true,
+        lastName: true,
+        status: true,
+        createdAt: true,
+        enrollments: {
+          where: { leftAt: null },
+          take: 1,
+          select: { group: { select: { name: true } } }
+        }
+      }
     }),
-    prisma.beneficiary.count({ where: { ...activeFileWhere, createdAt: { gte: thirtyDaysAgo } } }),
-    prisma.academicSupportPlan.count({
-      where: { status: { in: ["PLANNED", "IN_PROGRESS"] }, beneficiary: activeFileWhere }
+    prisma.attendanceRecord.findMany({
+      where: { beneficiary: activeFileWhere },
+      orderBy: [{ date: "desc" }, { createdAt: "desc" }],
+      take: 6,
+      select: {
+        id: true,
+        date: true,
+        status: true,
+        arrivalTime: true,
+        beneficiary: { select: { firstName: true, lastName: true } }
+      }
     }),
-    prisma.admissionAssessment.count({ where: { decision: "PENDING", beneficiary: activeFileWhere } }),
-    prisma.beneficiary.count({ where: { ...activeFileWhere, documents: { none: {} } } })
+    prisma.beneficiary.findMany({
+      where: { ...activeFileWhere, createdAt: { gte: sixMonthsAgo } },
+      select: { createdAt: true },
+      take: 2000
+    })
   ]);
 
-  const riskIds = absenceGroups.filter((item) => item._count._all >= 3).map((item) => item.beneficiaryId);
-  const riskBeneficiaries = riskIds.length
-    ? await prisma.beneficiary.findMany({
-        where: { ...activeFileWhere, id: { in: riskIds } },
-        select: { id: true, firstName: true, lastName: true, status: true }
-      })
-    : [];
-  const riskMap = new Map(riskBeneficiaries.map((item) => [item.id, item]));
-  const atRisk = absenceGroups.filter((item) => item._count._all >= 3 && riskMap.has(item.beneficiaryId));
-
   const attendanceRate = percent(presentToday, todayAttendance);
-  const integrationRate = percent(completedInternships, completedInternships + activeInternships);
-  const completionRate = percent(completedBeneficiaries, beneficiaries);
-  const maxStatus = Math.max(...statusDistribution.map((item) => item._count._all), 1);
+  const months = Array.from({ length: 6 }, (_, index) => new Date(now.getFullYear(), now.getMonth() - (5 - index), 1));
+  const monthCounts = months.map((month) => registrations.filter((item) => item.createdAt.getFullYear() === month.getFullYear() && item.createdAt.getMonth() === month.getMonth()).length);
+  const maxMonth = Math.max(...monthCounts, 1);
+  const monthLabels = months.map((month) => new Intl.DateTimeFormat("ar-MA", { month: "short" }).format(month));
+
+  let currentAngle = 0;
+  const totalStatuses = statusDistribution.reduce((sum, item) => sum + item._count._all, 0) || 1;
+  const donutStops = statusDistribution.map((item) => {
+    const start = currentAngle;
+    const value = (item._count._all / totalStatuses) * 360;
+    currentAngle += value;
+    return `${statusColors[item.status] || "#94a3b8"} ${start}deg ${currentAngle}deg`;
+  });
+  const donutBackground = donutStops.length ? `conic-gradient(${donutStops.join(",")})` : "#e2e8f0";
+
   const todayLabel = new Intl.DateTimeFormat("ar-MA", {
     weekday: "long",
     day: "numeric",
     month: "long",
     year: "numeric"
-  }).format(new Date());
+  }).format(now);
 
   const cards = [
-    { label: "الملفات النشطة", value: beneficiaries, note: `${newThisMonth} ملفًا جديدًا خلال 30 يومًا`, icon: Users, href: "/beneficiaries" },
-    { label: "في المسار النشط", value: activeBeneficiaries, note: `${completedBeneficiaries} استكملوا البرنامج`, icon: TrendingUp, href: "/workflow" },
-    { label: "حضور اليوم", value: `${attendanceRate}%`, note: `${presentToday} حاضرًا من أصل ${todayAttendance}`, icon: CalendarCheck2, href: "/attendance" },
-    { label: "إتمام التداريب", value: `${integrationRate}%`, note: `${activeInternships} تدريبًا نشطًا`, icon: BriefcaseBusiness, href: "/integration" },
-    { label: "قرارات معلقة", value: pendingAdmissions, note: "ملفات تنتظر قرار اللجنة", icon: ClipboardCheck, href: "/admissions" },
-    { label: "ملفات دون وثائق", value: filesWithoutDocuments, note: "تحتاج استكمالًا إداريًا", icon: FolderOpen, href: "/beneficiaries" },
-    { label: "متابعات مفتوحة", value: openFollowUps, note: `${urgentFollowUps} حالات عاجلة`, icon: HeartHandshake, href: "/social-support" },
-    { label: "إنجاز البرنامج", value: `${completionRate}%`, note: "من الملفات النشطة", icon: GraduationCap, href: "/reports" }
+    { label: "إجمالي المستفيدين", value: totalBeneficiaries, icon: Users, tone: "bg-emerald-100 text-emerald-700", href: "/beneficiaries" },
+    { label: "المقبولون هذه السنة", value: acceptedThisYear, icon: Check, tone: "bg-sky-100 text-sky-700", href: "/admissions" },
+    { label: "مجموعات نشطة", value: activeGroups, icon: FolderOpen, tone: "bg-violet-100 text-violet-700", href: "/groups" },
+    { label: "نسبة الحضور اليوم", value: `${attendanceRate}%`, icon: CalendarDays, tone: "bg-amber-100 text-amber-700", href: "/attendance" }
   ];
 
   return (
     <AppShell>
-      <div className="mx-auto max-w-[1540px] space-y-6">
-        <header className="overflow-hidden rounded-[2rem] bg-gradient-to-l from-slate-950 via-blue-950 to-blue-700 p-6 text-white shadow-xl md:p-8">
-          <div className="flex flex-col gap-6 xl:flex-row xl:items-center xl:justify-between">
-            <div>
-              <p className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-xs font-black"><Sparkles size={14} /> Dashboard Enterprise 3.0</p>
-              <h1 className="mt-4 text-3xl font-black md:text-5xl">مركز قيادة البرنامج</h1>
-              <p className="mt-3 text-sm font-bold text-blue-200">{todayLabel}</p>
-              <p className="mt-3 text-sm text-blue-50">مرحبًا {session.fullName}. جميع المؤشرات أدناه تخص الملفات النشطة فقط.</p>
-            </div>
-            <div className="flex flex-wrap gap-3">
-              <Link href="/beneficiaries/new" className="inline-flex items-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-black text-blue-800">تسجيل مستفيد <ArrowLeft size={17} /></Link>
-              <Link href="/reports" className="inline-flex items-center gap-2 rounded-2xl border border-white/20 bg-white/10 px-5 py-3 text-sm font-black text-white">التقارير <FileText size={17} /></Link>
-            </div>
+      <div className="space-y-5">
+        <section className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-black text-slate-900">لوحة القيادة</h1>
+            <p className="mt-1 text-xs font-bold text-slate-500">{todayLabel}</p>
           </div>
-          <div className="mt-7 grid grid-cols-2 gap-3 border-t border-white/10 pt-5 sm:grid-cols-4">
-            {[["المجموعات النشطة", groups], ["المسارات المهنية", programs], ["الوثائق المحفوظة", documents], ["التداريب النشطة", activeInternships]].map(([label, value]) => (
-              <div key={String(label)} className="rounded-2xl bg-white/10 px-4 py-3"><p className="text-xs text-blue-200">{label}</p><p className="mt-1 text-2xl font-black">{value}</p></div>
-            ))}
-          </div>
-        </header>
+          <Link href="/beneficiaries/new" className="btn-primary self-start !rounded-xl !px-5 !py-2.5">
+            <Plus size={17} /> مستفيد جديد
+          </Link>
+        </section>
 
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {cards.map(({ label, value, note, icon: Icon, href }) => (
-            <Link key={label} href={href} className="app-card group p-5 hover:-translate-y-1">
-              <div className="flex items-start justify-between gap-4"><div><p className="text-sm font-bold text-slate-500">{label}</p><p className="mt-2 text-3xl font-black text-slate-950">{value}</p></div><span className="grid h-12 w-12 place-items-center rounded-2xl bg-blue-50 text-blue-700"><Icon size={22} /></span></div>
-              <p className="mt-5 border-t border-slate-100 pt-4 text-xs text-slate-500">{note}</p>
+          {cards.map(({ label, value, icon: Icon, tone, href }) => (
+            <Link key={label} href={href} className="app-card flex items-center justify-between gap-4 p-5 hover:-translate-y-0.5">
+              <div>
+                <p className="text-2xl font-black text-slate-900">{value}</p>
+                <p className="mt-1 text-xs font-bold text-slate-500">{label}</p>
+              </div>
+              <span className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl ${tone}`}><Icon size={22} /></span>
             </Link>
           ))}
         </section>
 
-        <section className="grid gap-5 xl:grid-cols-[1.25fr_0.75fr]">
-          <article className="app-card p-6">
-            <div className="mb-6 flex items-center gap-3"><Activity className="text-blue-700" /><div><h2 className="text-xl font-black">توزيع الملفات حسب المرحلة</h2><p className="text-sm text-slate-500">لا يشمل الأرشيف أو سلة المحذوفات.</p></div></div>
-            <div className="space-y-4">
-              {statusDistribution.length ? statusDistribution.map((item) => {
-                const width = Math.max(4, Math.round((item._count._all / maxStatus) * 100));
-                return <div key={item.status}><div className="mb-2 flex justify-between text-sm"><span className="font-bold">{statusLabels[item.status] || item.status}</span><strong>{item._count._all}</strong></div><div className="h-2.5 rounded-full bg-slate-100"><div className="h-full rounded-full bg-gradient-to-l from-blue-700 to-cyan-400" style={{ width: `${width}%` }} /></div></div>;
-              }) : <div className="empty-state">لا توجد بيانات بعد.</div>}
+        <section className="grid gap-5 xl:grid-cols-[1.35fr_0.95fr]">
+          <article className="app-card p-5 md:p-6">
+            <div className="mb-6 flex items-center justify-between gap-3">
+              <h2 className="text-lg font-black text-slate-800">التسجيلات خلال آخر 6 أشهر</h2>
+              <span className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-500">آخر 6 أشهر</span>
+            </div>
+            <div className="flex h-64 items-end gap-4 border-b border-slate-200 px-2 pb-4">
+              {monthCounts.map((value, index) => (
+                <div key={monthLabels[index]} className="flex h-full min-w-10 flex-1 flex-col items-center justify-end gap-3">
+                  <span className="text-xs font-black text-slate-600">{value}</span>
+                  <div className="flex h-48 w-full max-w-16 items-end overflow-hidden rounded-t-xl bg-emerald-50">
+                    <div className="w-full rounded-t-xl bg-gradient-to-t from-emerald-600 to-emerald-400 transition-all" style={{ height: `${Math.max(value ? 12 : 2, (value / maxMonth) * 100)}%` }} />
+                  </div>
+                  <span className="text-[11px] font-bold text-slate-500">{monthLabels[index]}</span>
+                </div>
+              ))}
             </div>
           </article>
 
-          <article className="app-card p-6">
-            <div className="mb-5 flex items-center gap-3"><AlertTriangle className="text-amber-600" /><h2 className="text-xl font-black">أولويات اليوم</h2></div>
-            <div className="space-y-3">
-              {[
-                ["ملفات تنتظر اللجنة", pendingAdmissions, "/admissions"],
-                ["ملفات بلا وثائق", filesWithoutDocuments, "/beneficiaries"],
-                ["متابعات عاجلة", urgentFollowUps, "/social-support"],
-                ["خطط دعم مفتوحة", openSupportPlans, "/academic-tracking"]
-              ].map(([label, value, href]) => <Link key={String(label)} href={String(href)} className="flex items-center justify-between rounded-2xl border border-slate-200 p-4 hover:bg-slate-50"><span className="text-sm font-black">{label}</span><strong className="text-2xl">{value}</strong></Link>)}
+          <article className="app-card p-5 md:p-6">
+            <h2 className="text-lg font-black text-slate-800">توزيع الوضعيات</h2>
+            <div className="mt-5 flex flex-col items-center">
+              <div className="relative h-48 w-48 rounded-full" style={{ background: donutBackground }}>
+                <div className="absolute inset-10 grid place-items-center rounded-full bg-white shadow-inner">
+                  <div className="text-center"><p className="text-3xl font-black text-slate-900">{totalBeneficiaries}</p><p className="text-xs font-bold text-slate-500">ملف نشط</p></div>
+                </div>
+              </div>
+              <div className="mt-5 flex flex-wrap justify-center gap-3">
+                {statusDistribution.map((item) => (
+                  <span key={item.status} className="inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-600">
+                    <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: statusColors[item.status] || "#94a3b8" }} />
+                    {statusLabels[item.status] || item.status}
+                  </span>
+                ))}
+              </div>
             </div>
           </article>
         </section>
 
         <section className="grid gap-5 xl:grid-cols-2">
-          <article className="app-card p-6">
-            <div className="mb-5 flex items-center gap-3"><ShieldAlert className="text-red-600" /><h2 className="text-xl font-black">ملفات معرضة للانقطاع</h2></div>
-            <div className="space-y-3">
-              {atRisk.length ? atRisk.map((entry) => {
-                const beneficiary = riskMap.get(entry.beneficiaryId)!;
-                return <Link key={entry.beneficiaryId} href={`/beneficiaries/${entry.beneficiaryId}`} className="flex items-center justify-between rounded-2xl bg-red-50 p-4"><div><p className="font-black">{beneficiary.firstName} {beneficiary.lastName}</p><p className="text-xs text-slate-500">{statusLabels[beneficiary.status] || beneficiary.status}</p></div><span className="rounded-full bg-white px-3 py-1 text-xs font-black text-red-700">{entry._count._all} غيابات</span></Link>;
-              }) : <div className="empty-state">لا توجد حالات حرجة حاليًا.</div>}
+          <article className="app-card overflow-hidden">
+            <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+              <h2 className="text-base font-black text-slate-800">أحدث المستفيدين المسجلين</h2>
+              <UserRoundCheck size={19} className="text-emerald-600" />
             </div>
+            <div className="overflow-x-auto">
+              <table className="data-table min-w-[650px]">
+                <thead><tr><th>الاسم</th><th>الوضعية</th><th>المجموعة</th><th>التسجيل</th><th>الإجراء</th></tr></thead>
+                <tbody>
+                  {recentBeneficiaries.map((beneficiary) => (
+                    <tr key={beneficiary.id}>
+                      <td className="font-black text-slate-800">{beneficiary.firstName} {beneficiary.lastName}</td>
+                      <td><span className={`status-badge ${beneficiaryBadge[beneficiary.status] || "border-slate-200 bg-slate-50 text-slate-700"}`}>{statusLabels[beneficiary.status] || beneficiary.status}</span></td>
+                      <td className="text-slate-500">{beneficiary.enrollments[0]?.group.name || "—"}</td>
+                      <td className="text-slate-500">{formatDate(beneficiary.createdAt)}</td>
+                      <td><Link href={`/beneficiaries/${beneficiary.id}`} className="inline-flex items-center gap-1 text-xs font-black text-emerald-700 hover:text-emerald-900"><Eye size={14} /> عرض</Link></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="border-t border-slate-100 px-5 py-3"><Link href="/beneficiaries" className="text-xs font-black text-emerald-700">عرض جميع المستفيدين ←</Link></div>
           </article>
 
-          <article className="app-card p-6">
-            <div className="mb-5 flex items-center justify-between"><h2 className="text-xl font-black">آخر الأنشطة</h2><Link href="/notifications" className="text-sm font-black text-blue-700">عرض الكل ←</Link></div>
-            <div className="space-y-2">
-              {latestActivities.length ? latestActivities.map((activity) => <Link key={activity.id} href={`/beneficiaries/${activity.beneficiary.id}`} className="block rounded-2xl p-3 hover:bg-slate-50"><p className="font-black">{activity.title}</p><p className="mt-1 text-xs text-slate-500">{activity.beneficiary.firstName} {activity.beneficiary.lastName} · {activity.eventDate.toLocaleString("ar-MA")}</p></Link>) : <div className="empty-state">لا توجد أنشطة مسجلة بعد.</div>}
+          <article className="app-card overflow-hidden">
+            <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+              <h2 className="text-base font-black text-slate-800">آخر سجلات المواظبة والحضور</h2>
+              <CalendarDays size={19} className="text-emerald-600" />
             </div>
+            <div className="overflow-x-auto">
+              <table className="data-table min-w-[560px]">
+                <thead><tr><th>المستفيد</th><th>التاريخ</th><th>الحالة</th><th>الوصول</th></tr></thead>
+                <tbody>
+                  {recentAttendance.length ? recentAttendance.map((record) => (
+                    <tr key={record.id}>
+                      <td className="font-black text-slate-800">{record.beneficiary.firstName} {record.beneficiary.lastName}</td>
+                      <td className="text-slate-500">{formatDate(record.date)}</td>
+                      <td><span className={`status-badge ${attendanceBadge[record.status]}`}>{attendanceLabels[record.status]}</span></td>
+                      <td className="font-mono text-slate-500">{record.arrivalTime || "—"}</td>
+                    </tr>
+                  )) : <tr><td colSpan={4} className="py-10 text-center text-slate-400">لا توجد سجلات حضور بعد.</td></tr>}
+                </tbody>
+              </table>
+            </div>
+            <div className="border-t border-slate-100 px-5 py-3"><Link href="/attendance" className="text-xs font-black text-emerald-700">عرض جميع السجلات ←</Link></div>
           </article>
         </section>
 
-        <section className="app-card p-6">
-          <h2 className="text-xl font-black">الوصول السريع</h2>
-          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {shortcuts.map(({ href, label, icon: Icon }) => (
-              <Link key={href} href={href} className="rounded-2xl border border-slate-200 p-4 hover:border-blue-200">
-                <Icon className="text-blue-700" />
-                <p className="mt-3 font-black">{label}</p>
-              </Link>
-            ))}
-          </div>
-        </section>
+        <footer className="flex flex-col gap-2 border-t border-slate-200 pt-4 text-[11px] font-bold text-slate-400 sm:flex-row sm:justify-between">
+          <span>منصة الفرصة الثانية — تدبير مسار المستفيدين</span>
+          <span>مرحبًا، {session.fullName}</span>
+        </footer>
       </div>
     </AppShell>
   );
