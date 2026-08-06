@@ -1,16 +1,27 @@
+import { redirect } from "next/navigation";
+import { GraduationCap } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { VocationalTrainingManager } from "@/components/VocationalTrainingManager";
+import { PageContainer, PageHeader } from "@/components/ui/SystemUI";
+import { currentSession } from "@/lib/auth-server";
 
 export const dynamic = "force-dynamic";
 
-export default function VocationalTrainingPage() {
+export default async function VocationalTrainingPage() {
+  const session = await currentSession();
+  if (!session) redirect("/login");
+
   return (
     <AppShell>
-      <header className="mb-8">
-        <h2 className="text-3xl font-bold">التكوين المهني</h2>
-        <p className="mt-2 text-slate-600">إدارة المسارات والكفايات والورشات والمشاريع والتداريب الميدانية</p>
-      </header>
-      <VocationalTrainingManager />
+      <PageContainer>
+        <PageHeader
+          eyebrow="التأهيل المهني"
+          title="التكوين المهني"
+          description="إدارة المسارات والكفايات والورشات والمشاريع والتداريب الميدانية ضمن مساحة تشغيل موحدة."
+          icon={GraduationCap}
+        />
+        <VocationalTrainingManager />
+      </PageContainer>
     </AppShell>
   );
 }
