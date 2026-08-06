@@ -3,10 +3,16 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 const MAX_PHOTO_SIZE = 2 * 1024 * 1024;
+const MAX_DOCUMENT_SIZE = 5 * 1024 * 1024;
 const PHOTO_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const DOCUMENT_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "application/pdf"]);
+const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
+const RATE_LIMIT_MAX = 5;
+
+type UploadedFile = { url: string; pathname: string; fileName: string; mimeType: string; sizeBytes: number };
 
 function clean(value: unknown, max = 500) {
-  return String(value ?? "").trim().slice(0, max);
+  return String(value ?? "").trim().replace(/[\u0000-\u001f\u007f]/g, "").slice(0, max);
 }
 
 function optionalInt(value: unknown, min: number, max: number) {
@@ -30,18 +36,56 @@ function calculateAge(date: Date) {
   return age;
 }
 
+function requestIp(request: Request) {
+  return clean(request.headers.get("x-forwarded-for")?.split(",")[0] || request.headers.get("x-real-ip") || "unknown", 80);
+}
+
+function safeFileName(value: string) {
+  return value.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-120) || "document";
+}
+
+async function uploadOptionalDocument(form: FormData, field: string, pathname: string): Promise<UploadedFile | null> {
+  const value = form.get(field);
+  if (!(value instanceof File) || value.size === 0) return null;
+  if (!DOCUMENT_TYPES.has(value.type)) throw new Error(`INVALID_DOCUMENT_TYPE:${field}`);
+  if (value.size > MAX_DOCUMENT_SIZE) throw new Error(`DOCUMENT_TOO_LARGE:${field}`);
+  const blob = await put(`${pathname}/${safeFileName(value.name)}`, value, {
+    access: "private",
+    addRandomSuffix: true,
+    contentType: value.type
+  });
+  return { url: blob.url, pathname: blob.pathname, fileName: value.name, mimeType: value.type, sizeBytes: value.size };
+}
+
 export async function POST(request: Request) {
-  let uploadedPhotoUrl: string | null = null;
+  const uploadedUrls: string[] = [];
+  const ipAddress = requestIp(request);
 
   try {
+    const since = new Date(Date.now() - RATE_LIMIT_WINDOW_MS);
+    const recentAttempts = await prisma.auditLog.count({
+      where: { action: "PUBLIC_REGISTRATION_ATTEMPT", ipAddress, createdAt: { gte: since } }
+    });
+    if (recentAttempts >= RATE_LIMIT_MAX) {
+      return NextResponse.json({ message: "تم تجاوز عدد محاولات التسجيل المسموح بها مؤقتًا. يرجى المحاولة لاحقًا." }, { status: 429 });
+    }
+
+    await prisma.auditLog.create({
+      data: { action: "PUBLIC_REGISTRATION_ATTEMPT", entityType: "PUBLIC_PORTAL", description: "محاولة إرسال استمارة تسجيل قبلي.", ipAddress }
+    });
+
     const form = await request.formData();
+    if (clean(form.get("website"), 200)) {
+      return NextResponse.json({ message: "تعذر إرسال الطلب." }, { status: 400 });
+    }
+
     const firstName = clean(form.get("firstName"), 80);
     const lastName = clean(form.get("lastName"), 80);
     const gender = clean(form.get("gender"), 20);
     const birthPlace = clean(form.get("birthPlace"), 120) || null;
     const phone = clean(form.get("phone"), 30);
     const guardianPhone = clean(form.get("guardianPhone"), 30) || null;
-    const email = clean(form.get("email"), 180) || null;
+    const email = clean(form.get("email"), 180).toLowerCase() || null;
     const masarNumber = clean(form.get("masarNumber"), 30).toUpperCase();
     const address = clean(form.get("address"), 300);
     const commune = clean(form.get("commune"), 120) || null;
@@ -72,6 +116,12 @@ export async function POST(request: Request) {
     if (!firstName || !lastName || !gender || !phone || !birthDateValue || !address || !masarNumber || !lastEducationLevel || !dropoutReasons || !careerChoice1 || !personalProject) {
       return NextResponse.json({ message: "يرجى تعبئة جميع الحقول الإلزامية المميزة بعلامة *." }, { status: 400 });
     }
+    if (!/^0[5-7]\d{8}$/.test(phone.replace(/\s+/g, ""))) {
+      return NextResponse.json({ message: "رقم الهاتف المغربي غير صالح." }, { status: 400 });
+    }
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return NextResponse.json({ message: "البريد الإلكتروني غير صالح." }, { status: 400 });
+    }
     if (!consent || !declaration) {
       return NextResponse.json({ message: "يجب الموافقة على الإقرار ومعالجة البيانات لإرسال الطلب." }, { status: 400 });
     }
@@ -89,95 +139,87 @@ export async function POST(request: Request) {
     if (Number.isNaN(birthDate.getTime()) || birthDate > new Date()) {
       return NextResponse.json({ message: "تاريخ الازدياد غير صالح." }, { status: 400 });
     }
-
     const age = calculateAge(birthDate);
     if (age < 14 || age > 20) {
       return NextResponse.json({ message: "التسجيل متاح فقط للمترشحين الذين تتراوح أعمارهم بين 14 و20 سنة." }, { status: 400 });
     }
 
-    const duplicateMasar = await prisma.beneficiary.findUnique({ where: { masarNumber }, select: { id: true } });
-    if (duplicateMasar) {
-      return NextResponse.json({ message: "يوجد طلب مسجل مسبقًا برقم مسار هذا." }, { status: 409 });
-    }
-
     const duplicate = await prisma.beneficiary.findFirst({
       where: {
-        firstName: { equals: firstName, mode: "insensitive" },
-        lastName: { equals: lastName, mode: "insensitive" },
-        birthDate,
-        phone
+        OR: [
+          { masarNumber },
+          { firstName: { equals: firstName, mode: "insensitive" }, lastName: { equals: lastName, mode: "insensitive" }, birthDate, phone }
+        ]
       },
-      select: { id: true }
+      select: { registrationNumber: true }
     });
     if (duplicate) {
-      return NextResponse.json({ message: "يبدو أن طلبًا مطابقًا سبق تسجيله بهذه البيانات." }, { status: 409 });
+      return NextResponse.json({ message: "يوجد طلب مسجل مسبقًا بهذه البيانات." }, { status: 409 });
     }
 
     const registrationNumber = createRegistrationNumber();
     const registrationDate = new Date();
     const extension = photo.type === "image/png" ? "png" : photo.type === "image/webp" ? "webp" : "jpg";
-    const blob = await put(`public-registrations/${registrationNumber}/candidate-photo.${extension}`, photo, {
-      access: "private",
-      addRandomSuffix: true,
-      contentType: photo.type
+    const photoBlob = await put(`public-registrations/${registrationNumber}/candidate-photo.${extension}`, photo, {
+      access: "private", addRandomSuffix: true, contentType: photo.type
     });
-    uploadedPhotoUrl = blob.url;
+    uploadedUrls.push(photoBlob.url);
 
-    const beneficiary = await prisma.beneficiary.create({
-      data: {
-        registrationNumber,
-        registrationDate,
-        masarNumber,
-        profilePhotoUrl: blob.url,
-        profilePhotoPathname: blob.pathname,
-        personalProject,
-        gender,
-        email,
-        birthPlace,
-        commune,
-        province,
-        programExpectation,
-        registrationGoals,
-        careerChoice1,
-        careerChoice2,
-        careerChoice3,
-        careerChoiceReason,
-        priorExperience,
-        firstName,
-        lastName,
-        birthDate,
-        phone,
-        guardianPhone,
-        address,
-        lastEducationLevel,
-        guardianName,
-        guardianRelationship,
-        lastSchoolName,
-        dropoutYear,
-        dropoutReasons,
-        learningDifficulties,
-        careerGoal,
-        status: "PRE_REGISTERED",
-        followUpNotes: [
-          "تم إرسال الطلب عبر استمارة التسجيل القبلي الخارجية المرتبطة بمنصة التدبير.",
-          `سبق الاستفادة من برنامج مشابه: ${previousProgram}.`,
-          programExpectation ? `توقعات المترشح من البرنامج: ${programExpectation}` : null
-        ].filter(Boolean).join(" ")
-      }
-    });
+    const basePath = `public-registrations/${registrationNumber}/documents`;
+    const identityDocument = await uploadOptionalDocument(form, "identityDocument", basePath);
+    const educationDocument = await uploadOptionalDocument(form, "educationDocument", basePath);
+    const otherDocument = await uploadOptionalDocument(form, "otherDocument", basePath);
+    for (const file of [identityDocument, educationDocument, otherDocument]) if (file) uploadedUrls.push(file.url);
 
-    await prisma.activityLog.create({
-      data: {
-        beneficiaryId: beneficiary.id,
-        category: "REGISTRATION",
-        title: "تسجيل قبلي خارجي",
-        description: `رقم التسجيل: ${registrationNumber}. رقم مسار: ${masarNumber}. الرغبات: ${careerGoal}.`,
-        actorName: "المترشح",
-        referenceType: "Beneficiary",
-        referenceId: beneficiary.id,
-        referenceHref: `/beneficiaries/${beneficiary.id}`,
-        eventDate: registrationDate
+    const beneficiary = await prisma.$transaction(async (tx) => {
+      const created = await tx.beneficiary.create({
+        data: {
+          registrationNumber, registrationDate, masarNumber,
+          profilePhotoUrl: photoBlob.url, profilePhotoPathname: photoBlob.pathname,
+          personalProject, gender, email, birthPlace, commune, province, programExpectation, registrationGoals,
+          careerChoice1, careerChoice2, careerChoice3, careerChoiceReason, priorExperience,
+          firstName, lastName, birthDate, phone, guardianPhone, address, lastEducationLevel,
+          guardianName, guardianRelationship, lastSchoolName, dropoutYear, dropoutReasons,
+          learningDifficulties, careerGoal, status: "PRE_REGISTERED",
+          followUpNotes: [
+            "تم إرسال الطلب عبر بوابة التسجيل القبلي العامة.",
+            `سبق الاستفادة من برنامج مشابه: ${previousProgram}.`,
+            programExpectation ? `توقعات المترشح: ${programExpectation}` : null
+          ].filter(Boolean).join(" ")
+        }
+      });
+
+      const documents = [
+        identityDocument && { title: "وثيقة الهوية", category: "IDENTITY" as const, file: identityDocument },
+        educationDocument && { title: "وثيقة دراسية", category: "EDUCATION" as const, file: educationDocument },
+        otherDocument && { title: "وثيقة إضافية", category: "OTHER" as const, file: otherDocument }
+      ].filter(Boolean) as { title: string; category: "IDENTITY" | "EDUCATION" | "OTHER"; file: UploadedFile }[];
+
+      if (documents.length) {
+        await tx.document.createMany({
+          data: documents.map(({ title, category, file }) => ({
+            beneficiaryId: created.id, title, category, fileName: file.fileName, mimeType: file.mimeType,
+            sizeBytes: file.sizeBytes, storageProvider: "VERCEL_BLOB", blobUrl: file.url,
+            blobPathname: file.pathname, uploadedByName: "المترشح"
+          }))
+        });
       }
+
+      await tx.activityLog.create({
+        data: {
+          beneficiaryId: created.id, category: "REGISTRATION", title: "تسجيل قبلي خارجي",
+          description: `رقم التسجيل: ${registrationNumber}. رقم مسار: ${masarNumber}.`,
+          actorName: "المترشح", referenceType: "Beneficiary", referenceId: created.id,
+          referenceHref: `/beneficiaries/${created.id}`, eventDate: registrationDate
+        }
+      });
+      await tx.auditLog.create({
+        data: {
+          action: "PUBLIC_REGISTRATION_CREATED", entityType: "BENEFICIARY", entityId: created.id,
+          description: `إنشاء تسجيل قبلي خارجي برقم ${registrationNumber}.`, ipAddress
+        }
+      });
+      return created;
     });
 
     return NextResponse.json({
@@ -185,10 +227,16 @@ export async function POST(request: Request) {
       registrationDate: registrationDate.toISOString(),
       candidateName: `${firstName} ${lastName}`,
       beneficiaryId: beneficiary.id
-    }, { status: 201 });
+    }, { status: 201, headers: { "Cache-Control": "no-store" } });
   } catch (error) {
-    if (uploadedPhotoUrl) {
-      try { await del(uploadedPhotoUrl); } catch (cleanupError) { console.error("Photo cleanup failed", cleanupError); }
+    for (const url of uploadedUrls) {
+      try { await del(url); } catch (cleanupError) { console.error("Public file cleanup failed", cleanupError); }
+    }
+    if (error instanceof Error && error.message.startsWith("INVALID_DOCUMENT_TYPE")) {
+      return NextResponse.json({ message: "الوثائق المرفقة يجب أن تكون PDF أو صورة JPG/PNG/WEBP." }, { status: 400 });
+    }
+    if (error instanceof Error && error.message.startsWith("DOCUMENT_TOO_LARGE")) {
+      return NextResponse.json({ message: "حجم كل وثيقة يجب ألا يتجاوز 5 ميغابايت." }, { status: 400 });
     }
     console.error("Public registration failed", error);
     return NextResponse.json({ message: "تعذر إرسال الطلب حاليًا. يرجى المحاولة لاحقًا." }, { status: 500 });
