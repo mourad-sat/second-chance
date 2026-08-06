@@ -1,5 +1,9 @@
+import { redirect } from "next/navigation";
+import { Activity, CheckCircle2, CircleAlert, CircleDashed } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { WorkflowManager } from "@/components/WorkflowManager";
+import { PageContainer, PageHeader, StatCard } from "@/components/ui/SystemUI";
+import { currentSession } from "@/lib/auth-server";
 import { prisma } from "@/lib/prisma";
 import {
   getWorkflowTransitions,
@@ -10,7 +14,11 @@ import {
 export const dynamic = "force-dynamic";
 
 export default async function WorkflowPage() {
+  const session = await currentSession();
+  if (!session) redirect("/login");
+
   const beneficiaries = await prisma.beneficiary.findMany({
+    where: { archivedAt: null, deletedAt: null },
     include: {
       admissionAssessment: { select: { decision: true } },
       enrollments: {
@@ -35,7 +43,8 @@ export default async function WorkflowPage() {
         }
       }
     },
-    orderBy: [{ updatedAt: "desc" }]
+    orderBy: [{ updatedAt: "desc" }],
+    take: 300
   });
 
   const items = beneficiaries.map((beneficiary) => {
@@ -102,29 +111,23 @@ export default async function WorkflowPage() {
 
   return (
     <AppShell>
-      <div className="mx-auto max-w-[1500px] space-y-6">
-        <header className="overflow-hidden rounded-[2rem] bg-gradient-to-l from-blue-950 via-blue-900 to-blue-700 p-6 text-white shadow-xl shadow-blue-950/10 sm:p-8">
-          <p className="text-sm font-black text-cyan-300">Workflow Engine 2.0</p>
-          <h1 className="mt-2 text-3xl font-black sm:text-4xl">سير ملفات المستفيدين</h1>
-          <p className="mt-3 max-w-3xl text-sm leading-7 text-blue-100">إدارة انتقال الملفات بين مراحل البرنامج وفق شروط موحدة، مع إظهار الجاهزية والمتطلبات الناقصة والتنبيهات وتوثيق كل انتقال.</p>
-        </header>
+      <PageContainer>
+        <PageHeader
+          eyebrow="محرك الانتقالات"
+          title="سير ملفات المستفيدين"
+          description="إدارة انتقال الملفات بين مراحل البرنامج وفق شروط موحدة، مع إظهار الجاهزية والمتطلبات الناقصة وتوثيق كل انتقال."
+          icon={Activity}
+        />
 
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {[
-            ["الملفات النشيطة", activeFiles, "bg-blue-50 text-blue-800"],
-            ["جاهزة للانتقال", readyFiles, "bg-emerald-50 text-emerald-800"],
-            ["متوقفة بمتطلبات", blockedFiles, "bg-amber-50 text-amber-800"],
-            ["أنهت البرنامج", completed, "bg-violet-50 text-violet-800"]
-          ].map(([label, value, className]) => (
-            <article key={String(label)} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-              <span className={`inline-flex rounded-full px-3 py-1 text-xs font-black ${className}`}>{label}</span>
-              <p className="mt-4 text-4xl font-black text-slate-950">{value}</p>
-            </article>
-          ))}
+          <StatCard title="الملفات النشطة" value={activeFiles} note="ملفات ما زالت داخل مسار البرنامج" icon={Activity} tone="sky" />
+          <StatCard title="جاهزة للانتقال" value={readyFiles} note="تتوفر فيها شروط مرحلة تالية واحدة على الأقل" icon={CheckCircle2} tone="emerald" />
+          <StatCard title="متوقفة بمتطلبات" value={blockedFiles} note="تحتاج استكمال بيانات أو وثائق" icon={CircleAlert} tone="amber" />
+          <StatCard title="أنهت البرنامج" value={completed} note="ملفات مكتملة المسار" icon={CircleDashed} tone="violet" />
         </section>
 
         <WorkflowManager items={items} />
-      </div>
+      </PageContainer>
     </AppShell>
   );
 }
