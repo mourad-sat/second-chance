@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ClipboardCheck, ExternalLink, UserPlus, Users } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { AdmissionsTable } from "@/components/AdmissionsTable";
+import { PageContainer, PageHeader, StatCard } from "@/components/ui/SystemUI";
 import { currentSession } from "@/lib/auth-server";
 import { prisma } from "@/lib/prisma";
 
@@ -89,37 +91,35 @@ export default async function AdmissionsPage() {
 
   return (
     <AppShell>
-      <div className="space-y-6">
-        <header className="flex flex-col gap-5 rounded-[2rem] bg-gradient-to-l from-slate-950 via-blue-950 to-blue-700 p-6 text-white shadow-xl md:flex-row md:items-center md:justify-between md:p-8">
-          <div>
-            <p className="text-sm font-black text-cyan-300">بوابة القبول والتوجيه</p>
-            <h1 className="mt-2 text-3xl font-black md:text-4xl">طلبات التسجيل القبلي</h1>
-            <p className="mt-3 max-w-3xl text-sm leading-7 text-blue-100">مراجعة الطلبات الخارجية والداخلية، التحقق من الوثائق، إجراء التشخيص، ثم اتخاذ قرار اللجنة.</p>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            <Link href="/register" target="_blank" className="rounded-2xl border border-white/20 bg-white/10 px-5 py-3 text-sm font-black hover:bg-white/20">فتح الاستمارة العامة</Link>
-            <Link href="/beneficiaries/new" className="rounded-2xl bg-white px-5 py-3 text-sm font-black text-blue-900">تسجيل داخلي</Link>
-          </div>
-        </header>
+      <PageContainer>
+        <PageHeader
+          eyebrow="بوابة القبول والتوجيه"
+          title="طلبات التسجيل القبلي"
+          description="مراجعة الطلبات الخارجية والداخلية، التحقق من الوثائق، إجراء التشخيص، ثم اعتماد قرار اللجنة."
+          icon={ClipboardCheck}
+          actions={
+            <>
+              <Link href="/register" target="_blank" className="btn-secondary">
+                <ExternalLink size={16} /> فتح الاستمارة العامة
+              </Link>
+              <Link href="/beneficiaries/new" className="btn-primary">
+                <UserPlus size={16} /> تسجيل داخلي
+              </Link>
+            </>
+          }
+        />
 
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
-          {[
-            ["طلبات خارجية", external, "text-cyan-700", "bg-cyan-50"],
-            ["تسجيل قبلي", preRegistered, "text-blue-700", "bg-blue-50"],
-            ["قيد الدراسة", underReview, "text-amber-700", "bg-amber-50"],
-            ["لائحة الانتظار", waitlisted, "text-orange-700", "bg-orange-50"],
-            ["مقبولون", accepted, "text-emerald-700", "bg-emerald-50"],
-            ["غير مقبولين", rejected, "text-rose-700", "bg-rose-50"]
-          ].map(([label, value, textClass, bgClass]) => (
-            <article key={String(label)} className={`rounded-3xl border border-slate-200 p-5 shadow-sm ${bgClass}`}>
-              <p className="text-xs font-bold text-slate-600">{label}</p>
-              <p className={`mt-3 text-3xl font-black ${textClass}`}>{value}</p>
-            </article>
-          ))}
+          <StatCard title="طلبات خارجية" value={external} note="وصلت من البوابة العامة" icon={ExternalLink} tone="sky" />
+          <StatCard title="تسجيل قبلي" value={preRegistered} note="بانتظار بدء المراجعة" icon={Users} tone="violet" />
+          <StatCard title="قيد الدراسة" value={underReview} note="تحت المراجعة والتشخيص" icon={ClipboardCheck} tone="amber" />
+          <StatCard title="لائحة الانتظار" value={waitlisted} note="بانتظار توفر مقعد" icon={Users} tone="amber" />
+          <StatCard title="مقبولون" value={accepted} note="تم اعتماد قرار القبول" icon={ClipboardCheck} tone="emerald" />
+          <StatCard title="غير مقبولين" value={rejected} note="تم إنهاء دراسة الملف" icon={Users} tone="rose" />
         </section>
 
         <AdmissionsTable items={items} />
-      </div>
+      </PageContainer>
     </AppShell>
   );
 }
