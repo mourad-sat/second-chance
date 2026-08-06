@@ -6,7 +6,7 @@ import { AlertTriangle, BellRing, CheckCheck, Filter, Search } from "lucide-reac
 
 type Notification = {
   id: string;
-  type: "ATTENDANCE" | "ACADEMIC" | "SOCIAL" | "INTERNSHIP";
+  type: "ATTENDANCE" | "ACADEMIC" | "SOCIAL" | "INTERNSHIP" | "WORKFLOW";
   priority: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
   title: string;
   description: string;
@@ -16,36 +16,57 @@ type Notification = {
 };
 
 const storageKey = "second-chance-read-notifications";
-const typeLabels: Record<string, string> = { ATTENDANCE: "المواظبة", ACADEMIC: "التتبع التربوي", SOCIAL: "المواكبة الاجتماعية", INTERNSHIP: "التداريب" };
-const priorityLabels: Record<string, string> = { CRITICAL: "عاجل", HIGH: "مرتفع", MEDIUM: "متوسط", LOW: "منخفض" };
+const typeLabels: Record<Notification["type"], string> = {
+  ATTENDANCE: "المواظبة",
+  ACADEMIC: "التتبع التربوي",
+  SOCIAL: "المواكبة الاجتماعية",
+  INTERNSHIP: "التداريب",
+  WORKFLOW: "سير الملفات"
+};
+const priorityLabels: Record<Notification["priority"], string> = {
+  CRITICAL: "عاجل",
+  HIGH: "مرتفع",
+  MEDIUM: "متوسط",
+  LOW: "منخفض"
+};
 
 export function NotificationsCenter() {
   const [items, setItems] = useState<Notification[]>([]);
   const [readIds, setReadIds] = useState<string[]>([]);
   const [query, setQuery] = useState("");
-  const [type, setType] = useState("ALL");
+  const [type, setType] = useState<"ALL" | Notification["type"]>("ALL");
   const [unreadOnly, setUnreadOnly] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    try { setReadIds(JSON.parse(localStorage.getItem(storageKey) || "[]")); } catch { setReadIds([]); }
+    try {
+      const stored = JSON.parse(localStorage.getItem(storageKey) || "[]");
+      setReadIds(Array.isArray(stored) ? stored.filter((value): value is string => typeof value === "string").slice(-1000) : []);
+    } catch {
+      setReadIds([]);
+    }
+
     fetch("/api/notifications", { cache: "no-store" })
       .then((response) => response.ok ? response.json() : { notifications: [] })
-      .then((result) => setItems(result.notifications || []))
+      .then((result) => setItems(Array.isArray(result.notifications) ? result.notifications : []))
       .finally(() => setLoading(false));
   }, []);
 
   function persist(ids: string[]) {
-    setReadIds(ids);
-    localStorage.setItem(storageKey, JSON.stringify(ids));
+    const boundedIds = Array.from(new Set(ids)).slice(-1000);
+    setReadIds(boundedIds);
+    localStorage.setItem(storageKey, JSON.stringify(boundedIds));
   }
 
-  const filtered = useMemo(() => items.filter((item) => {
-    const matchesQuery = `${item.title} ${item.description} ${item.beneficiaryName || ""}`.toLowerCase().includes(query.toLowerCase());
-    const matchesType = type === "ALL" || item.type === type;
-    const matchesRead = !unreadOnly || !readIds.includes(item.id);
-    return matchesQuery && matchesType && matchesRead;
-  }), [items, query, type, unreadOnly, readIds]);
+  const filtered = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    return items.filter((item) => {
+      const matchesQuery = !normalizedQuery || `${item.title} ${item.description} ${item.beneficiaryName || ""}`.toLowerCase().includes(normalizedQuery);
+      const matchesType = type === "ALL" || item.type === type;
+      const matchesRead = !unreadOnly || !readIds.includes(item.id);
+      return matchesQuery && matchesType && matchesRead;
+    });
+  }, [items, query, type, unreadOnly, readIds]);
 
   const unreadCount = items.filter((item) => !readIds.includes(item.id)).length;
   const criticalCount = items.filter((item) => item.priority === "CRITICAL").length;
@@ -61,7 +82,7 @@ export function NotificationsCenter() {
       <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="grid gap-3 lg:grid-cols-[1fr_220px_auto_auto]">
           <label className="relative"><Search className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="ابحث في التنبيهات..." className="w-full rounded-xl border border-slate-200 py-3 pl-4 pr-10 text-sm" /></label>
-          <label className="relative"><Filter className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" size={17} /><select value={type} onChange={(event) => setType(event.target.value)} className="w-full rounded-xl border border-slate-200 py-3 pl-4 pr-10 text-sm"><option value="ALL">كل الأنواع</option>{Object.entries(typeLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+          <label className="relative"><Filter className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" size={17} /><select value={type} onChange={(event) => setType(event.target.value as "ALL" | Notification["type"])} className="w-full rounded-xl border border-slate-200 py-3 pl-4 pr-10 text-sm"><option value="ALL">كل الأنواع</option>{Object.entries(typeLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
           <button onClick={() => setUnreadOnly((value) => !value)} className={`rounded-xl border px-4 py-3 text-sm font-semibold ${unreadOnly ? "border-blue-600 bg-blue-50 text-blue-700" : "border-slate-200 text-slate-600"}`}>غير المقروءة فقط</button>
           <button onClick={() => persist(items.map((item) => item.id))} className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white"><CheckCheck size={17} /> تعليم الكل كمقروء</button>
         </div>
