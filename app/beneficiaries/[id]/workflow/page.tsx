@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import { AdmissionAppointmentScheduler } from "@/components/AdmissionAppointmentScheduler";
 import { AppShell } from "@/components/AppShell";
 import { BeneficiaryWorkflowV3 } from "@/components/BeneficiaryWorkflowV3";
 import { currentSession } from "@/lib/auth-server";
@@ -66,31 +67,34 @@ export default async function BeneficiaryWorkflowPage({ params }: { params: { id
   };
 
   const transitions = getWorkflowTransitions(snapshot);
+  const appointment = beneficiary.admissionAssessment?.interviewDate ? {
+    interviewDate: beneficiary.admissionAssessment.interviewDate.toISOString(),
+    interviewerName: beneficiary.admissionAssessment.interviewerName || "",
+    summary: beneficiary.admissionAssessment.interviewSummary || ""
+  } : null;
 
   return (
     <AppShell>
-      <BeneficiaryWorkflowV3
-        beneficiary={{
-          id: beneficiary.id,
-          fullName: `${beneficiary.firstName} ${beneficiary.lastName}`,
-          registrationNumber: beneficiary.registrationNumber || fallbackNumber(beneficiary.id, beneficiary.createdAt),
-          status: beneficiary.status,
-          progress: workflowProgress[beneficiary.status]
-        }}
-        appointment={beneficiary.admissionAssessment?.interviewDate ? {
-          interviewDate: beneficiary.admissionAssessment.interviewDate.toISOString(),
-          interviewerName: beneficiary.admissionAssessment.interviewerName || "",
-          summary: beneficiary.admissionAssessment.interviewSummary || ""
-        } : null}
-        transitions={transitions}
-        history={beneficiary.activityLogs.map((item) => ({
-          ...item,
-          eventDate: item.eventDate.toISOString(),
-          metadata: item.metadata && typeof item.metadata === "object" && !Array.isArray(item.metadata)
-            ? item.metadata as Record<string, unknown>
-            : null
-        }))}
-      />
+      <div className="space-y-6">
+        <AdmissionAppointmentScheduler beneficiaryId={beneficiary.id} appointment={appointment} />
+        <BeneficiaryWorkflowV3
+          beneficiary={{
+            id: beneficiary.id,
+            fullName: `${beneficiary.firstName} ${beneficiary.lastName}`,
+            registrationNumber: beneficiary.registrationNumber || fallbackNumber(beneficiary.id, beneficiary.createdAt),
+            status: beneficiary.status,
+            progress: workflowProgress[beneficiary.status]
+          }}
+          transitions={transitions}
+          history={beneficiary.activityLogs.map((item) => ({
+            ...item,
+            eventDate: item.eventDate.toISOString(),
+            metadata: item.metadata && typeof item.metadata === "object" && !Array.isArray(item.metadata)
+              ? item.metadata as Record<string, unknown>
+              : null
+          }))}
+        />
+      </div>
     </AppShell>
   );
 }
