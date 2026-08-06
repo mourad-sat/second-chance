@@ -31,6 +31,12 @@ export type IntelligenceReport = {
   nextAction: string;
 };
 
+const ASSESSMENT_REQUIRED_STATUSES = new Set<BeneficiaryStatus>([
+  BeneficiaryStatus.UNDER_REVIEW,
+  BeneficiaryStatus.ACCEPTED,
+  BeneficiaryStatus.ENROLLED
+]);
+
 export function buildBeneficiaryIntelligence(input: IntelligenceInput): IntelligenceReport {
   let risk = 0;
   const factors: IntelligenceReport["factors"] = [];
@@ -73,7 +79,7 @@ export function buildBeneficiaryIntelligence(input: IntelligenceInput): Intellig
     factors.push({ label: "متابعات مفتوحة", impact: "warning", detail: `${input.followUpsOpen} متابعة لم تُغلق بعد.` });
   }
 
-  if (!input.hasAssessment && [BeneficiaryStatus.UNDER_REVIEW, BeneficiaryStatus.ACCEPTED, BeneficiaryStatus.ENROLLED].includes(input.status)) {
+  if (!input.hasAssessment && ASSESSMENT_REQUIRED_STATUSES.has(input.status)) {
     risk += 14;
     factors.push({ label: "تشخيص غير مكتمل", impact: "warning", detail: "لا توجد مقابلة تشخيص موثقة." });
     recommendations.push("استكمال التشخيص قبل اعتماد التوجيه أو خطة التدخل.");
