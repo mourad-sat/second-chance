@@ -9,10 +9,16 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: stabilization-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   quality:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
+    env:
+      DATABASE_URL: postgresql://stabilization:stabilization@localhost:5432/stabilization
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -28,13 +34,12 @@ jobs:
 
       - name: Validate Prisma schema
         run: npm run check:prisma
-        env:
-          DATABASE_URL: postgresql://stabilization:stabilization@localhost:5432/stabilization
 
       - name: Generate Prisma client
         run: npx prisma generate
-        env:
-          DATABASE_URL: postgresql://stabilization:stabilization@localhost:5432/stabilization
 
       - name: TypeScript check
         run: npm run typecheck
+
+      - name: Production build
+        run: npm run build
