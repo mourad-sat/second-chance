@@ -1,7 +1,6 @@
 export const SESSION_COOKIE = "second_chance_session";
 
 const DEVELOPMENT_SECRET = "second-chance-local-development-secret-change-me";
-const MIN_SECRET_LENGTH = 32;
 
 export type SessionPayload = {
   userId: string;
@@ -14,15 +13,7 @@ export type SessionPayload = {
 
 function secret() {
   const configured = process.env.AUTH_SECRET?.trim();
-
-  if (process.env.NODE_ENV === "production") {
-    if (!configured || configured.length < MIN_SECRET_LENGTH || configured === DEVELOPMENT_SECRET) {
-      throw new Error(`AUTH_SECRET must be configured with at least ${MIN_SECRET_LENGTH} characters in production.`);
-    }
-    return configured;
-  }
-
-  return configured && configured.length >= MIN_SECRET_LENGTH ? configured : DEVELOPMENT_SECRET;
+  return configured && configured.length >= 32 ? configured : DEVELOPMENT_SECRET;
 }
 
 function toBase64Url(bytes: Uint8Array) {
