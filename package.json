@@ -4,11 +4,14 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && prisma db push --accept-data-loss && next build",
+    "build": "prisma generate && next build",
     "build:app": "prisma generate && next build",
     "typecheck": "tsc --noEmit",
     "check:prisma": "prisma validate",
+    "db:sync": "prisma db push",
+    "db:sync:destructive": "prisma db push --accept-data-loss",
     "verify": "npm run check:prisma && prisma generate && npm run typecheck",
+    "ci": "npm run verify && npm run build:app",
     "postinstall": "prisma generate",
     "start": "next start",
     "lint": "next lint"
