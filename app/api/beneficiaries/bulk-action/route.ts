@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { currentSession } from "@/lib/auth-server";
+import { isAdminRole } from "@/lib/session";
 
 const MAX_BATCH_SIZE = 100;
 
@@ -8,7 +10,6 @@ type RequestBody = {
   ids?: unknown;
   action?: unknown;
   reason?: unknown;
-  actorName?: unknown;
 };
 
 function parseStringIds(value: unknown): string[] {
@@ -26,15 +27,22 @@ function parseStringIds(value: unknown): string[] {
 
 export async function POST(request: Request) {
   try {
+    const session = await currentSession();
+    if (!session) {
+      return NextResponse.json({ message: "يجب تسجيل الدخول أولًا." }, { status: 401 });
+    }
+
     const body = (await request.json()) as RequestBody;
-    const ids: string[] = parseStringIds(body.ids);
+    const ids = parseStringIds(body.ids);
     const action: BulkAction | null = body.action === "archive" || body.action === "trash" ? body.action : null;
     const reason = typeof body.reason === "string" && body.reason.trim() ? body.reason.trim() : null;
-    const actorName = typeof body.actorName === "string" && body.actorName.trim() ? body.actorName.trim() : "إدارة المنصة";
 
     if (!ids.length) return NextResponse.json({ message: "لم يتم تحديد أي مستفيد." }, { status: 400 });
     if (ids.length > MAX_BATCH_SIZE) return NextResponse.json({ message: `الحد الأقصى للعملية الواحدة هو ${MAX_BATCH_SIZE} ملف.` }, { status: 400 });
     if (!action) return NextResponse.json({ message: "العملية الجماعية غير صالحة." }, { status: 400 });
+    if (action === "trash" && !isAdminRole(session.role)) {
+      return NextResponse.json({ message: "إرسال الملفات إلى سلة المحذوفات متاح للإدارة فقط." }, { status: 403 });
+    }
 
     const beneficiaries = await prisma.beneficiary.findMany({
       where: { id: { in: ids }, deletedAt: null },
@@ -43,9 +51,10 @@ export async function POST(request: Request) {
 
     if (!beneficiaries.length) return NextResponse.json({ message: "لا توجد ملفات صالحة لتنفيذ العملية." }, { status: 404 });
 
-    const validIds: string[] = beneficiaries.map((item) => item.id);
+    const validIds = beneficiaries.map((item) => item.id);
     const now = new Date();
     const isArchive = action === "archive";
+    const actorName = session.fullName || session.email;
 
     await prisma.$transaction([
       prisma.beneficiary.updateMany({
@@ -59,7 +68,7 @@ export async function POST(request: Request) {
           action: isArchive ? "BULK_ARCHIVE_BENEFICIARY" : "BULK_TRASH_BENEFICIARY",
           entityType: "Beneficiary",
           entityId: item.id,
-          description: `${isArchive ? "أرشفة جماعية" : "إرسال جماعي إلى السلة"}: ${item.firstName} ${item.lastName} (${item.registrationNumber || item.id})${reason ? ` — السبب: ${reason}` : ""}`
+          description: `${isArchive ? "أرشفة جماعية" : "إرسال جماعي إلى السلة"}: ${item.firstName} ${item.lastName} (${item.registrationNumber || item.id}) — المنفذ: ${actorName}${reason ? ` — السبب: ${reason}` : ""}`
         }))
       })
     ]);
@@ -69,7 +78,7 @@ export async function POST(request: Request) {
       processed: validIds.length
     });
   } catch (error) {
-    console.error(error);
+    console.error("Bulk beneficiary action failed", error);
     return NextResponse.json({ message: "تعذر تنفيذ العملية الجماعية." }, { status: 500 });
   }
 }
