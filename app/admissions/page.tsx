@@ -9,6 +9,8 @@ export const dynamic = "force-dynamic";
 
 const managedStatuses = ["PRE_REGISTERED", "UNDER_REVIEW", "WAITLISTED", "ACCEPTED", "REJECTED"] as const;
 
+type AdmissionSource = "EXTERNAL" | "INTERNAL";
+
 export default async function AdmissionsPage() {
   const session = await currentSession();
   if (!session) redirect("/login");
@@ -60,26 +62,30 @@ export default async function AdmissionsPage() {
   const waitlisted = beneficiaries.filter((item) => item.status === "WAITLISTED").length;
   const rejected = beneficiaries.filter((item) => item.status === "REJECTED").length;
 
-  const items = beneficiaries.map((beneficiary) => ({
-    id: beneficiary.id,
-    fullName: `${beneficiary.firstName} ${beneficiary.lastName}`,
-    registrationNumber: beneficiary.registrationNumber || `SC-${beneficiary.registrationDate.getFullYear()}-${beneficiary.id.slice(-8).toUpperCase()}`,
-    masarNumber: beneficiary.masarNumber || "",
-    identityNumber: beneficiary.identityNumber || "",
-    phone: beneficiary.phone || "",
-    gender: beneficiary.gender || "",
-    province: beneficiary.province || "",
-    profilePhotoUrl: beneficiary.profilePhotoUrl || "",
-    registrationDate: beneficiary.registrationDate.toISOString(),
-    status: beneficiary.status,
-    source: beneficiary.activityLogs[0]?.actorName === "المترشح" ? "EXTERNAL" : "INTERNAL",
-    documentCount: beneficiary._count.documents,
-    interviewDate: beneficiary.admissionAssessment?.interviewDate?.toISOString() || "",
-    proposedTrack: beneficiary.admissionAssessment?.proposedTrack || beneficiary.careerChoice1 || "",
-    proposedSpecialty: beneficiary.admissionAssessment?.proposedSpecialty || "",
-    decision: beneficiary.admissionAssessment?.decision || "PENDING",
-    hasAssessment: Boolean(beneficiary.admissionAssessment)
-  }));
+  const items = beneficiaries.map((beneficiary) => {
+    const source: AdmissionSource = beneficiary.activityLogs[0]?.actorName === "المترشح" ? "EXTERNAL" : "INTERNAL";
+
+    return {
+      id: beneficiary.id,
+      fullName: `${beneficiary.firstName} ${beneficiary.lastName}`,
+      registrationNumber: beneficiary.registrationNumber || `SC-${beneficiary.registrationDate.getFullYear()}-${beneficiary.id.slice(-8).toUpperCase()}`,
+      masarNumber: beneficiary.masarNumber || "",
+      identityNumber: beneficiary.identityNumber || "",
+      phone: beneficiary.phone || "",
+      gender: beneficiary.gender || "",
+      province: beneficiary.province || "",
+      profilePhotoUrl: beneficiary.profilePhotoUrl || "",
+      registrationDate: beneficiary.registrationDate.toISOString(),
+      status: beneficiary.status,
+      source,
+      documentCount: beneficiary._count.documents,
+      interviewDate: beneficiary.admissionAssessment?.interviewDate?.toISOString() || "",
+      proposedTrack: beneficiary.admissionAssessment?.proposedTrack || beneficiary.careerChoice1 || "",
+      proposedSpecialty: beneficiary.admissionAssessment?.proposedSpecialty || "",
+      decision: beneficiary.admissionAssessment?.decision || "PENDING",
+      hasAssessment: Boolean(beneficiary.admissionAssessment)
+    };
+  });
 
   return (
     <AppShell>
