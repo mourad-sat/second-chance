@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import type { LucideIcon } from "lucide-react";
 import {
   Activity,
   AlertTriangle,
@@ -35,6 +36,13 @@ const statusLabels: Record<string, string> = {
   WITHDRAWN: "منسحب",
   COMPLETED: "مستكمل"
 };
+
+const shortcuts: Array<{ href: string; label: string; icon: LucideIcon }> = [
+  { href: "/beneficiaries/new", label: "تسجيل مستفيد", icon: UserPlus },
+  { href: "/attendance", label: "تسجيل الحضور", icon: CalendarCheck2 },
+  { href: "/workflow", label: "سير الملفات", icon: Activity },
+  { href: "/reports", label: "التقارير التنفيذية", icon: FileText }
+];
 
 function percent(value: number, total: number) {
   return total > 0 ? Math.round((value / total) * 100) : 0;
@@ -234,15 +242,12 @@ export default async function DashboardPage() {
         <section className="app-card p-6">
           <h2 className="text-xl font-black">الوصول السريع</h2>
           <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {[
-              ["/beneficiaries/new", "تسجيل مستفيد", UserPlus],
-              ["/attendance", "تسجيل الحضور", CalendarCheck2],
-              ["/workflow", "سير الملفات", Activity],
-              ["/reports", "التقارير التنفيذية", FileText]
-            ].map(([href, label, Icon]) => {
-              const ShortcutIcon = Icon as typeof UserPlus;
-              return <Link key={String(href)} href={String(href)} className="rounded-2xl border border-slate-200 p-4 hover:border-blue-200"><ShortcutIcon className="text-blue-700" /><p className="mt-3 font-black">{label}</p></Link>;
-            })}
+            {shortcuts.map(({ href, label, icon: Icon }) => (
+              <Link key={href} href={href} className="rounded-2xl border border-slate-200 p-4 hover:border-blue-200">
+                <Icon className="text-blue-700" />
+                <p className="mt-3 font-black">{label}</p>
+              </Link>
+            ))}
           </div>
         </section>
       </div>
