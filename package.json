@@ -1,10 +1,14 @@
 {
   "name": "second-chance-management",
-  "version": "0.1.0",
+  "version": "3.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && prisma db push --accept-data-loss && next build",
+    "build:app": "prisma generate && next build",
+    "typecheck": "tsc --noEmit",
+    "check:prisma": "prisma validate",
+    "verify": "npm run check:prisma && prisma generate && npm run typecheck",
     "postinstall": "prisma generate",
     "start": "next start",
     "lint": "next lint"
