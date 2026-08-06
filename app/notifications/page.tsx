@@ -1,19 +1,27 @@
+import { redirect } from "next/navigation";
+import { BellRing } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { NotificationsCenter } from "@/components/NotificationsCenter";
+import { PageContainer, PageHeader } from "@/components/ui/SystemUI";
+import { currentSession } from "@/lib/auth-server";
 
 export const dynamic = "force-dynamic";
 
-export default function NotificationsPage() {
+export default async function NotificationsPage() {
+  const session = await currentSession();
+  if (!session) redirect("/login");
+
   return (
     <AppShell>
-      <div className="mx-auto max-w-7xl">
-        <header className="mb-8">
-          <p className="text-sm font-semibold text-blue-600">المتابعة الاستباقية</p>
-          <h1 className="mt-1 text-3xl font-bold text-slate-950">مركز الإشعارات الذكي</h1>
-          <p className="mt-2 text-slate-600">تنبيهات مولدة تلقائيًا من بيانات المواظبة وخطط الدعم والمواكبة الاجتماعية والتداريب المهنية.</p>
-        </header>
+      <PageContainer className="max-w-7xl">
+        <PageHeader
+          eyebrow="المتابعة الاستباقية"
+          title="مركز الإشعارات الذكي"
+          description="تنبيهات مولدة تلقائيًا من بيانات المواظبة وخطط الدعم والمواكبة الاجتماعية والتداريب المهنية."
+          icon={BellRing}
+        />
         <NotificationsCenter />
-      </div>
+      </PageContainer>
     </AppShell>
   );
 }
