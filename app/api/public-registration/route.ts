@@ -44,6 +44,30 @@ function safeFileName(value: string) {
   return value.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-120) || "document";
 }
 
+async function verifyTurnstile(token: string, remoteIp: string) {
+  const secret = process.env.TURNSTILE_SECRET_KEY;
+  if (!secret) return true;
+  if (!token) return false;
+
+  const body = new URLSearchParams({ secret, response: token });
+  if (remoteIp && remoteIp !== "unknown") body.set("remoteip", remoteIp);
+
+  try {
+    const response = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body,
+      cache: "no-store"
+    });
+    if (!response.ok) return false;
+    const result = await response.json() as { success?: boolean };
+    return result.success === true;
+  } catch (error) {
+    console.error("Turnstile verification failed", error);
+    return false;
+  }
+}
+
 async function uploadOptionalDocument(form: FormData, field: string, pathname: string): Promise<UploadedFile | null> {
   const value = form.get(field);
   if (!(value instanceof File) || value.size === 0) return null;
@@ -79,9 +103,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: "تعذر إرسال الطلب." }, { status: 400 });
     }
 
+    const turnstileToken = clean(form.get("cf-turnstile-response"), 2048);
+    if (!(await verifyTurnstile(turnstileToken, ipAddress))) {
+      return NextResponse.json({ message: "تعذر التحقق الأمني. يرجى إعادة المحاولة." }, { status: 400 });
+    }
+
     const firstName = clean(form.get("firstName"), 80);
     const lastName = clean(form.get("lastName"), 80);
     const gender = clean(form.get("gender"), 20);
+    const identityNumber = clean(form.get("identityNumber"), 40).toUpperCase() || null;
     const birthPlace = clean(form.get("birthPlace"), 120) || null;
     const phone = clean(form.get("phone"), 30);
     const guardianPhone = clean(form.get("guardianPhone"), 30) || null;
@@ -116,6 +146,12 @@ export async function POST(request: Request) {
     if (!firstName || !lastName || !gender || !phone || !birthDateValue || !address || !masarNumber || !lastEducationLevel || !dropoutReasons || !careerChoice1 || !personalProject) {
       return NextResponse.json({ message: "يرجى تعبئة جميع الحقول الإلزامية المميزة بعلامة *." }, { status: 400 });
     }
+    if (!/^[A-Z0-9-]{6,30}$/.test(masarNumber)) {
+      return NextResponse.json({ message: "رقم مسار غير صالح." }, { status: 400 });
+    }
+    if (identityNumber && !/^[A-Z0-9-]{5,40}$/.test(identityNumber)) {
+      return NextResponse.json({ message: "رقم البطاقة الوطنية غير صالح." }, { status: 400 });
+    }
     if (!/^0[5-7]\d{8}$/.test(phone.replace(/\s+/g, ""))) {
       return NextResponse.json({ message: "رقم الهاتف المغربي غير صالح." }, { status: 400 });
     }
@@ -144,13 +180,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: "التسجيل متاح فقط للمترشحين الذين تتراوح أعمارهم بين 14 و20 سنة." }, { status: 400 });
     }
 
+    const duplicateConditions = [
+      { masarNumber },
+      { firstName: { equals: firstName, mode: "insensitive" as const }, lastName: { equals: lastName, mode: "insensitive" as const }, birthDate, phone }
+    ];
+    if (identityNumber) duplicateConditions.push({ identityNumber } as never);
+
     const duplicate = await prisma.beneficiary.findFirst({
-      where: {
-        OR: [
-          { masarNumber },
-          { firstName: { equals: firstName, mode: "insensitive" }, lastName: { equals: lastName, mode: "insensitive" }, birthDate, phone }
-        ]
-      },
+      where: { OR: duplicateConditions },
       select: { registrationNumber: true }
     });
     if (duplicate) {
@@ -174,7 +211,7 @@ export async function POST(request: Request) {
     const beneficiary = await prisma.$transaction(async (tx) => {
       const created = await tx.beneficiary.create({
         data: {
-          registrationNumber, registrationDate, masarNumber,
+          registrationNumber, registrationDate, masarNumber, identityNumber,
           profilePhotoUrl: photoBlob.url, profilePhotoPathname: photoBlob.pathname,
           personalProject, gender, email, birthPlace, commune, province, programExpectation, registrationGoals,
           careerChoice1, careerChoice2, careerChoice3, careerChoiceReason, priorExperience,
