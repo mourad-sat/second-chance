@@ -2,6 +2,7 @@ import "./globals.css";
 import type { Metadata, Viewport } from "next";
 import { Cairo } from "next/font/google";
 import { ToastCenter } from "@/components/ui/ToastCenter";
+import { GlobalSearchOverlay } from "@/components/ui/GlobalSearchOverlay";
 
 const cairo = Cairo({
   subsets: ["arabic", "latin"],
@@ -31,6 +32,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="ar" dir="rtl" className={cairo.variable}>
       <body className={cairo.className}>
         {children}
+        <GlobalSearchOverlay />
         <ToastCenter />
       </body>
     </html>
