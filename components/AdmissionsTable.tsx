@@ -1,16 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import { Search, SlidersHorizontal } from "lucide-react";
-import { useMemo, useState } from "react";
+import { ChevronLeft, ChevronRight, ExternalLink, FileText, Search, SlidersHorizontal } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 
 type AdmissionItem = {
   id: string;
   fullName: string;
-  fileNumber: string;
+  registrationNumber: string;
+  masarNumber: string;
   identityNumber: string;
   phone: string;
+  gender: string;
+  province: string;
+  profilePhotoUrl: string;
   registrationDate: string;
+  status: string;
+  source: "EXTERNAL" | "INTERNAL";
+  documentCount: number;
   interviewDate: string;
   proposedTrack: string;
   proposedSpecialty: string;
@@ -18,143 +25,127 @@ type AdmissionItem = {
   hasAssessment: boolean;
 };
 
-const decisionLabels: Record<string, string> = {
-  NOT_STARTED: "لم يبدأ التشخيص",
-  PENDING: "في انتظار القرار",
-  ACCEPTED: "مقبول",
+const pageSize = 25;
+
+const statusLabels: Record<string, string> = {
+  PRE_REGISTERED: "تسجيل قبلي",
+  UNDER_REVIEW: "قيد الدراسة",
   WAITLISTED: "لائحة الانتظار",
-  REJECTED: "غير مقبول",
-  NEEDS_REASSESSMENT: "إعادة تقييم"
+  ACCEPTED: "مقبول",
+  REJECTED: "غير مقبول"
 };
 
-const decisionStyles: Record<string, string> = {
-  NOT_STARTED: "bg-slate-100 text-slate-700",
-  PENDING: "bg-amber-50 text-amber-700",
+const statusStyles: Record<string, string> = {
+  PRE_REGISTERED: "bg-blue-50 text-blue-700",
+  UNDER_REVIEW: "bg-amber-50 text-amber-700",
+  WAITLISTED: "bg-orange-50 text-orange-700",
   ACCEPTED: "bg-emerald-50 text-emerald-700",
-  WAITLISTED: "bg-blue-50 text-blue-700",
-  REJECTED: "bg-rose-50 text-rose-700",
-  NEEDS_REASSESSMENT: "bg-violet-50 text-violet-700"
+  REJECTED: "bg-rose-50 text-rose-700"
 };
 
 export function AdmissionsTable({ items }: { items: AdmissionItem[] }) {
   const [query, setQuery] = useState("");
-  const [decision, setDecision] = useState("ALL");
+  const [status, setStatus] = useState("ALL");
+  const [source, setSource] = useState("ALL");
+  const [page, setPage] = useState(1);
 
   const filtered = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
-
     return items.filter((item) => {
-      const itemDecision = item.hasAssessment ? item.decision : "NOT_STARTED";
-      const matchesDecision = decision === "ALL" || itemDecision === decision;
+      const matchesStatus = status === "ALL" || item.status === status;
+      const matchesSource = source === "ALL" || item.source === source;
       const haystack = [
         item.fullName,
-        item.fileNumber,
+        item.registrationNumber,
+        item.masarNumber,
         item.identityNumber,
         item.phone,
+        item.province,
         item.proposedTrack,
         item.proposedSpecialty
-      ]
-        .join(" ")
-        .toLowerCase();
-
-      return matchesDecision && (!normalizedQuery || haystack.includes(normalizedQuery));
+      ].join(" ").toLowerCase();
+      return matchesStatus && matchesSource && (!normalizedQuery || haystack.includes(normalizedQuery));
     });
-  }, [items, query, decision]);
+  }, [items, query, status, source]);
+
+  useEffect(() => setPage(1), [query, status, source]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const visible = filtered.slice((safePage - 1) * pageSize, safePage * pageSize);
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className="border-b border-slate-200 p-5">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+    <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+      <div className="border-b border-slate-200 p-5 md:p-6">
+        <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
           <div>
-            <h2 className="text-xl font-bold">لائحة التشخيص والقبول</h2>
-            <p className="mt-1 text-sm text-slate-500">ابدأ التشخيص أو استكمل التوجيه وقرار اللجنة.</p>
+            <h2 className="text-xl font-black text-slate-950">لائحة الطلبات</h2>
+            <p className="mt-1 text-sm text-slate-500">ابحث، صفّ الطلبات، ثم افتح الملف لمراجعة البيانات والوثائق واتخاذ القرار.</p>
           </div>
 
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <label className="relative min-w-0 sm:w-80">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-[320px_210px_190px]">
+            <label className="relative">
               <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-              <input
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="الاسم، رقم الملف، الهاتف أو المسار..."
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-4 pr-10 text-sm outline-none focus:border-blue-400 focus:bg-white"
-              />
+              <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="الاسم، رقم الطلب، مسار أو الهاتف..." className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-4 pr-10 text-sm outline-none focus:border-blue-500 focus:bg-white" />
             </label>
-
-            <label className="relative sm:w-56">
+            <label className="relative">
               <SlidersHorizontal className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" size={17} />
-              <select
-                value={decision}
-                onChange={(event) => setDecision(event.target.value)}
-                className="w-full appearance-none rounded-xl border border-slate-200 bg-white py-2.5 pl-4 pr-10 text-sm outline-none focus:border-blue-400"
-              >
+              <select value={status} onChange={(event) => setStatus(event.target.value)} className="w-full appearance-none rounded-xl border border-slate-200 bg-white py-3 pl-4 pr-10 text-sm outline-none focus:border-blue-500">
                 <option value="ALL">كل الحالات</option>
-                <option value="NOT_STARTED">لم يبدأ التشخيص</option>
-                <option value="PENDING">في انتظار القرار</option>
-                <option value="ACCEPTED">مقبول</option>
-                <option value="WAITLISTED">لائحة الانتظار</option>
-                <option value="NEEDS_REASSESSMENT">إعادة تقييم</option>
-                <option value="REJECTED">غير مقبول</option>
+                {Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
               </select>
             </label>
+            <select value={source} onChange={(event) => setSource(event.target.value)} className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-blue-500">
+              <option value="ALL">كل المصادر</option>
+              <option value="EXTERNAL">استمارة خارجية</option>
+              <option value="INTERNAL">تسجيل داخلي</option>
+            </select>
           </div>
         </div>
-
-        <p className="mt-4 text-xs text-slate-500">النتائج المعروضة: {filtered.length} من أصل {items.length}</p>
+        <p className="mt-4 text-xs font-bold text-slate-500">النتائج: {filtered.length} من أصل {items.length}</p>
       </div>
 
-      {filtered.length === 0 ? (
-        <div className="p-12 text-center">
-          <p className="font-semibold text-slate-700">لا توجد نتائج مطابقة.</p>
-          <p className="mt-1 text-sm text-slate-500">غيّر عبارة البحث أو حالة التصفية.</p>
-        </div>
+      {visible.length === 0 ? (
+        <div className="p-12 text-center"><p className="font-black text-slate-700">لا توجد طلبات مطابقة.</p><p className="mt-1 text-sm text-slate-500">غيّر البحث أو عوامل التصفية.</p></div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[980px] text-right text-sm">
-            <thead className="bg-slate-50 text-slate-600">
-              <tr>
-                <th className="px-5 py-4">المستفيد</th>
-                <th className="px-5 py-4">رقم الملف</th>
-                <th className="px-5 py-4">تاريخ التسجيل</th>
-                <th className="px-5 py-4">المقابلة</th>
-                <th className="px-5 py-4">التوجيه المقترح</th>
-                <th className="px-5 py-4">قرار اللجنة</th>
-                <th className="px-5 py-4">الإجراء</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filtered.map((item) => {
-                const itemDecision = item.hasAssessment ? item.decision : "NOT_STARTED";
-                return (
-                  <tr key={item.id} className="hover:bg-slate-50">
-                    <td className="px-5 py-4">
-                      <p className="font-semibold text-slate-900">{item.fullName}</p>
-                      <p className="mt-1 text-xs text-slate-500">{item.phone || item.identityNumber || "لا توجد وسيلة اتصال"}</p>
-                    </td>
-                    <td className="px-5 py-4 font-mono text-xs font-semibold text-slate-700">{item.fileNumber}</td>
-                    <td className="px-5 py-4">{item.registrationDate}</td>
-                    <td className="px-5 py-4">{item.interviewDate || "غير منجزة"}</td>
-                    <td className="px-5 py-4">{item.proposedSpecialty || item.proposedTrack || "—"}</td>
-                    <td className="px-5 py-4">
-                      <span className={`rounded-full px-3 py-1 text-xs font-semibold ${decisionStyles[itemDecision]}`}>
-                        {decisionLabels[itemDecision]}
-                      </span>
-                    </td>
-                    <td className="px-5 py-4">
-                      <Link
-                        href={`/beneficiaries/${item.id}#diagnosis`}
-                        className="inline-flex rounded-lg border border-slate-300 px-3 py-2 font-semibold text-slate-700 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
-                      >
-                        {item.hasAssessment ? "فتح التشخيص" : "بدء التشخيص"}
-                      </Link>
-                    </td>
-                  </tr>
-                );
-              })}
+          <table className="data-table min-w-[1250px]">
+            <thead><tr><th>المترشح</th><th>رقم الطلب</th><th>المصدر</th><th>التسجيل</th><th>المجال المطلوب</th><th>الوثائق</th><th>الحالة</th><th>الإجراء</th></tr></thead>
+            <tbody>
+              {visible.map((item) => (
+                <tr key={item.id}>
+                  <td>
+                    <div className="flex items-center gap-3">
+                      {item.profilePhotoUrl ? <img src={item.profilePhotoUrl} alt="" className="h-11 w-11 rounded-xl object-cover" /> : <div className="grid h-11 w-11 place-items-center rounded-xl bg-slate-100 font-black text-slate-500">{item.fullName.slice(0, 1)}</div>}
+                      <div><p className="font-black text-slate-900">{item.fullName}</p><p className="mt-1 text-xs text-slate-500">{item.phone || "بدون هاتف"} · {item.province || "الإقليم غير محدد"}</p></div>
+                    </div>
+                  </td>
+                  <td><p className="font-mono text-xs font-black text-slate-800">{item.registrationNumber}</p><p className="mt-1 text-xs text-slate-400">مسار: {item.masarNumber || "—"}</p></td>
+                  <td><span className={`rounded-full px-3 py-1 text-xs font-black ${item.source === "EXTERNAL" ? "bg-cyan-50 text-cyan-700" : "bg-slate-100 text-slate-700"}`}>{item.source === "EXTERNAL" ? "خارجي" : "داخلي"}</span></td>
+                  <td>{new Date(item.registrationDate).toLocaleDateString("ar-MA")}</td>
+                  <td>{item.proposedSpecialty || item.proposedTrack || "لم يحدد"}</td>
+                  <td><span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-700"><FileText size={14} /> {item.documentCount}</span></td>
+                  <td><span className={`rounded-full px-3 py-1 text-xs font-black ${statusStyles[item.status] || "bg-slate-100 text-slate-700"}`}>{statusLabels[item.status] || item.status}</span></td>
+                  <td>
+                    <div className="flex gap-2">
+                      <Link href={`/beneficiaries/${item.id}`} className="inline-flex items-center gap-2 rounded-xl bg-slate-950 px-3 py-2 text-xs font-black text-white"><ExternalLink size={14} /> فتح الملف</Link>
+                      <Link href={`/beneficiaries/${item.id}#diagnosis`} className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-black text-slate-700 hover:bg-slate-50">التشخيص</Link>
+                    </div>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
       )}
+
+      <div className="flex flex-col gap-3 border-t border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-xs font-bold text-slate-500">الصفحة {safePage} من {totalPages} · {pageSize} طلبًا في الصفحة</p>
+        <div className="flex gap-2">
+          <button disabled={safePage <= 1} onClick={() => setPage((value) => Math.max(1, value - 1))} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-black disabled:opacity-40"><ChevronRight size={16} /> السابق</button>
+          <button disabled={safePage >= totalPages} onClick={() => setPage((value) => Math.min(totalPages, value + 1))} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-black disabled:opacity-40">التالي <ChevronLeft size={16} /></button>
+        </div>
+      </div>
     </section>
   );
 }
