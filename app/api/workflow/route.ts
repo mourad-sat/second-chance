@@ -1,5 +1,7 @@
 import { ActivityCategory, BeneficiaryStatus } from "@prisma/client";
 import { NextResponse } from "next/server";
+import { currentSession } from "@/lib/auth-server";
+import { canAccessPath } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import {
   validateWorkflowTransition,
@@ -7,15 +9,35 @@ import {
   type WorkflowSnapshot
 } from "@/lib/workflow-engine";
 
+type WorkflowRequestBody = {
+  beneficiaryId?: unknown;
+  nextStatus?: unknown;
+  responsibleName?: unknown;
+  note?: unknown;
+  deadline?: unknown;
+};
+
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
+    const session = await currentSession();
+    if (!session) {
+      return NextResponse.json({ message: "يجب تسجيل الدخول أولًا." }, { status: 401 });
+    }
+    if (!canAccessPath(session.role, "/workflow", "POST")) {
+      return NextResponse.json({ message: "ليست لديك صلاحية لتغيير مسار الملف." }, { status: 403 });
+    }
+
+    const body = (await request.json()) as WorkflowRequestBody;
     const beneficiaryId = typeof body.beneficiaryId === "string" ? body.beneficiaryId.trim() : "";
-    const actorName = typeof body.actorName === "string" && body.actorName.trim() ? body.actorName.trim() : "مدير المنصة";
-    const responsibleName = typeof body.responsibleName === "string" && body.responsibleName.trim() ? body.responsibleName.trim() : actorName;
-    const note = typeof body.note === "string" && body.note.trim() ? body.note.trim() : null;
+    const actorName = session.fullName;
+    const responsibleName = typeof body.responsibleName === "string" && body.responsibleName.trim()
+      ? body.responsibleName.trim().slice(0, 120)
+      : actorName;
+    const note = typeof body.note === "string" && body.note.trim()
+      ? body.note.trim().slice(0, 2000)
+      : null;
     const deadline = typeof body.deadline === "string" && body.deadline ? new Date(body.deadline) : null;
-    const nextStatus = Object.values(BeneficiaryStatus).includes(body.nextStatus)
+    const nextStatus = typeof body.nextStatus === "string" && Object.values(BeneficiaryStatus).includes(body.nextStatus as BeneficiaryStatus)
       ? (body.nextStatus as BeneficiaryStatus)
       : null;
 
@@ -46,6 +68,10 @@ export async function POST(request: Request) {
 
     if (!beneficiary) {
       return NextResponse.json({ message: "المستفيد غير موجود أو غير نشط." }, { status: 404 });
+    }
+
+    if (beneficiary.status === nextStatus) {
+      return NextResponse.json({ message: "الملف موجود بالفعل في هذه المرحلة." }, { status: 409 });
     }
 
     const snapshot: WorkflowSnapshot = {
@@ -80,6 +106,7 @@ export async function POST(request: Request) {
 
     const warningsText = validation.warnings.length ? ` تنبيهات: ${validation.warnings.join(" ")}` : "";
     const description = note || `تم تغيير وضعية الملف من ${workflowStatusLabels[beneficiary.status]} إلى ${workflowStatusLabels[nextStatus]}.${warningsText}`;
+    const completedAt = new Date();
 
     await prisma.$transaction([
       prisma.beneficiary.update({ where: { id: beneficiary.id }, data: { status: nextStatus } }),
@@ -99,7 +126,8 @@ export async function POST(request: Request) {
             responsibleName,
             deadline: deadline?.toISOString() || null,
             warnings: validation.warnings,
-            completedAt: new Date().toISOString()
+            completedAt: completedAt.toISOString(),
+            actorUserId: session.userId
           }
         }
       }),
@@ -108,7 +136,7 @@ export async function POST(request: Request) {
           action: "WORKFLOW_TRANSITION",
           entityType: "Beneficiary",
           entityId: beneficiary.id,
-          description: `${beneficiary.firstName} ${beneficiary.lastName}: ${workflowStatusLabels[beneficiary.status]} ← ${workflowStatusLabels[nextStatus]} · المسؤول: ${responsibleName}${deadline ? ` · الأجل: ${deadline.toISOString()}` : ""}`
+          description: `${beneficiary.firstName} ${beneficiary.lastName}: ${workflowStatusLabels[beneficiary.status]} ← ${workflowStatusLabels[nextStatus]} · المنفذ: ${actorName} · المسؤول: ${responsibleName}${deadline ? ` · الأجل: ${deadline.toISOString()}` : ""}`
         }
       })
     ]);
@@ -119,7 +147,7 @@ export async function POST(request: Request) {
       warnings: validation.warnings
     });
   } catch (error) {
-    console.error(error);
+    console.error("Workflow transition failed", error);
     return NextResponse.json({ message: "تعذر تحديث مسار الملف." }, { status: 500 });
   }
 }
