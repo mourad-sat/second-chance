@@ -1,6 +1,10 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { CalendarClock, HeartHandshake, Siren, UsersRound } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { SocialFollowUpForm } from "@/components/SocialFollowUpForm";
+import { EmptyState, PageContainer, PageHeader, SectionCard, StatCard, StatusBadge, TableShell } from "@/components/ui/SystemUI";
+import { currentSession } from "@/lib/auth-server";
 import { prisma } from "@/lib/prisma";
 
 const typeLabels: Record<string, string> = {
@@ -24,64 +28,73 @@ const priorityLabels: Record<string, string> = {
 export const dynamic = "force-dynamic";
 
 export default async function SocialSupportPage() {
+  const session = await currentSession();
+  if (!session) redirect("/login");
+
+  const activeBeneficiaryWhere = { archivedAt: null, deletedAt: null } as const;
   const [beneficiaries, records, openCount, urgentCount] = await Promise.all([
     prisma.beneficiary.findMany({
-      where: { status: { in: ["ACCEPTED", "ENROLLED"] } },
+      where: { ...activeBeneficiaryWhere, status: { in: ["ACCEPTED", "ENROLLED"] } },
       select: { id: true, firstName: true, lastName: true },
-      orderBy: [{ lastName: "asc" }, { firstName: "asc" }]
+      orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+      take: 300
     }),
     prisma.socialFollowUp.findMany({
+      where: { beneficiary: activeBeneficiaryWhere },
       include: { beneficiary: { select: { id: true, firstName: true, lastName: true } } },
       orderBy: { eventDate: "desc" },
       take: 100
     }),
-    prisma.socialFollowUp.count({ where: { status: { in: ["OPEN", "IN_PROGRESS"] } } }),
-    prisma.socialFollowUp.count({ where: { priority: "URGENT", status: { in: ["OPEN", "IN_PROGRESS"] } } })
+    prisma.socialFollowUp.count({ where: { status: { in: ["OPEN", "IN_PROGRESS"] }, beneficiary: activeBeneficiaryWhere } }),
+    prisma.socialFollowUp.count({ where: { priority: "URGENT", status: { in: ["OPEN", "IN_PROGRESS"] }, beneficiary: activeBeneficiaryWhere } })
   ]);
 
-  const upcomingCount = records.filter((record) =>
-    record.nextFollowUpDate && record.nextFollowUpDate >= new Date()
-  ).length;
+  const upcomingCount = records.filter((record) => record.nextFollowUpDate && record.nextFollowUpDate >= new Date()).length;
 
   return (
     <AppShell>
-      <header className="mb-8">
-        <h2 className="text-3xl font-bold">المواكبة الاجتماعية</h2>
-        <p className="mt-2 text-slate-600">تتبع المقابلات والزيارات والتدخلات والإحالات والحالات ذات الأولوية.</p>
-      </header>
+      <PageContainer>
+        <PageHeader
+          eyebrow="الدعم والتدخل"
+          title="المواكبة الاجتماعية"
+          description="تتبع المقابلات والزيارات والتدخلات والإحالات والحالات ذات الأولوية داخل سجل موحد."
+          icon={HeartHandshake}
+        />
 
-      <section className="mb-6 grid gap-4 md:grid-cols-3">
-        <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><p className="text-sm text-slate-500">الحالات المفتوحة</p><p className="mt-2 text-3xl font-bold">{openCount}</p></article>
-        <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><p className="text-sm text-slate-500">الحالات المستعجلة</p><p className="mt-2 text-3xl font-bold">{urgentCount}</p></article>
-        <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><p className="text-sm text-slate-500">مواعيد متابعة مقبلة</p><p className="mt-2 text-3xl font-bold">{upcomingCount}</p></article>
-      </section>
+        <section className="grid gap-4 md:grid-cols-3">
+          <StatCard title="الحالات المفتوحة" value={openCount} note="تحتاج متابعة أو تدخلًا" icon={UsersRound} tone="sky" />
+          <StatCard title="الحالات المستعجلة" value={urgentCount} note="أولوية تدخل فورية" icon={Siren} tone="rose" />
+          <StatCard title="مواعيد متابعة مقبلة" value={upcomingCount} note="ضمن السجلات المعروضة" icon={CalendarClock} tone="amber" />
+        </section>
 
-      <div className="mb-8"><SocialFollowUpForm beneficiaries={beneficiaries} /></div>
+        <SectionCard title="تسجيل عملية مواكبة" description="أضف مقابلة أو زيارة أو إحالة جديدة." icon={HeartHandshake}>
+          <SocialFollowUpForm beneficiaries={beneficiaries} />
+        </SectionCard>
 
-      <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-200 p-5"><h3 className="text-xl font-bold">سجل عمليات المواكبة</h3></div>
-        {records.length === 0 ? (
-          <p className="p-8 text-center text-slate-500">لا توجد عمليات مسجلة بعد.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-right text-sm">
-              <thead className="bg-slate-50 text-slate-600"><tr><th className="px-5 py-4">المستفيد</th><th className="px-5 py-4">النوع</th><th className="px-5 py-4">الموضوع</th><th className="px-5 py-4">الأولوية</th><th className="px-5 py-4">التاريخ</th><th className="px-5 py-4">المتابعة المقبلة</th></tr></thead>
-              <tbody className="divide-y divide-slate-100">
-                {records.map((record) => (
-                  <tr key={record.id} className="hover:bg-slate-50">
-                    <td className="px-5 py-4 font-medium"><Link className="hover:underline" href={`/beneficiaries/${record.beneficiary.id}`}>{record.beneficiary.firstName} {record.beneficiary.lastName}</Link></td>
-                    <td className="px-5 py-4">{typeLabels[record.type]}</td>
-                    <td className="px-5 py-4">{record.subject}</td>
-                    <td className="px-5 py-4"><span className="rounded-full bg-slate-100 px-3 py-1">{priorityLabels[record.priority]}</span></td>
-                    <td className="px-5 py-4">{record.eventDate.toLocaleDateString("ar-MA")}</td>
-                    <td className="px-5 py-4">{record.nextFollowUpDate ? record.nextFollowUpDate.toLocaleDateString("ar-MA") : "—"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+        <SectionCard title="سجل عمليات المواكبة" description="آخر 100 عملية مرتبطة بملفات نشطة." icon={UsersRound} contentClassName="p-0">
+          {records.length === 0 ? (
+            <div className="p-5"><EmptyState icon={HeartHandshake} title="لا توجد عمليات مسجلة بعد" description="ستظهر عمليات المواكبة هنا بعد تسجيل أول تدخل." /></div>
+          ) : (
+            <TableShell className="rounded-none border-0 shadow-none">
+              <table className="data-table min-w-[900px]">
+                <thead><tr><th>المستفيد</th><th>النوع</th><th>الموضوع</th><th>الأولوية</th><th>التاريخ</th><th>المتابعة المقبلة</th></tr></thead>
+                <tbody>
+                  {records.map((record) => (
+                    <tr key={record.id}>
+                      <td><Link className="font-black text-slate-900 hover:text-emerald-700" href={`/beneficiaries/${record.beneficiary.id}`}>{record.beneficiary.firstName} {record.beneficiary.lastName}</Link></td>
+                      <td>{typeLabels[record.type]}</td>
+                      <td>{record.subject}</td>
+                      <td><StatusBadge tone={record.priority === "URGENT" ? "danger" : record.priority === "HIGH" ? "warning" : "neutral"}>{priorityLabels[record.priority]}</StatusBadge></td>
+                      <td>{record.eventDate.toLocaleDateString("ar-MA")}</td>
+                      <td>{record.nextFollowUpDate ? record.nextFollowUpDate.toLocaleDateString("ar-MA") : "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </TableShell>
+          )}
+        </SectionCard>
+      </PageContainer>
     </AppShell>
   );
 }
