@@ -1,6 +1,7 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import { BeneficiaryWorkflowV3 } from "@/components/BeneficiaryWorkflowV3";
+import { currentSession } from "@/lib/auth-server";
 import { prisma } from "@/lib/prisma";
 import { getWorkflowTransitions, workflowProgress, type WorkflowSnapshot } from "@/lib/workflow-engine";
 
@@ -11,13 +12,23 @@ function fallbackNumber(id: string, createdAt: Date) {
 }
 
 export default async function BeneficiaryWorkflowPage({ params }: { params: { id: string } }) {
+  const session = await currentSession();
+  if (!session) redirect("/login");
+
   const beneficiary = await prisma.beneficiary.findUnique({
     where: { id: params.id, archivedAt: null, deletedAt: null },
     include: {
-      admissionAssessment: { select: { decision: true } },
+      admissionAssessment: {
+        select: {
+          decision: true,
+          interviewDate: true,
+          interviewerName: true,
+          interviewSummary: true
+        }
+      },
       enrollments: { where: { leftAt: null }, select: { id: true }, take: 1 },
       activityLogs: {
-        where: { referenceType: "BENEFICIARY_WORKFLOW" },
+        where: { referenceType: { in: ["BENEFICIARY_WORKFLOW", "ADMISSION_APPOINTMENT"] } },
         orderBy: { eventDate: "desc" },
         take: 50,
         select: { id: true, title: true, description: true, actorName: true, eventDate: true, metadata: true }
@@ -66,6 +77,11 @@ export default async function BeneficiaryWorkflowPage({ params }: { params: { id
           status: beneficiary.status,
           progress: workflowProgress[beneficiary.status]
         }}
+        appointment={beneficiary.admissionAssessment?.interviewDate ? {
+          interviewDate: beneficiary.admissionAssessment.interviewDate.toISOString(),
+          interviewerName: beneficiary.admissionAssessment.interviewerName || "",
+          summary: beneficiary.admissionAssessment.interviewSummary || ""
+        } : null}
         transitions={transitions}
         history={beneficiary.activityLogs.map((item) => ({
           ...item,
