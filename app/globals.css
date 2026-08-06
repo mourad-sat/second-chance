@@ -153,6 +153,9 @@ img { max-width:100%; }
 .via-blue-950,.via-blue-900,.via-indigo-950 { --tw-gradient-to:rgb(2 44 34 / 0) var(--tw-gradient-to-position) !important; --tw-gradient-stops:var(--tw-gradient-from),#064e3b var(--tw-gradient-via-position),var(--tw-gradient-to) !important; }
 .to-blue-900,.to-blue-800,.to-blue-700,.to-blue-600,.to-indigo-950 { --tw-gradient-to:#0f766e var(--tw-gradient-to-position) !important; }
 
+/* The new dashboard owns its complete analytics layout. */
+[aria-label="التحليلات التنفيذية"] { display:none !important; }
+
 .page-enter { animation:pageEnter 360ms ease-out both; }
 @keyframes pageEnter { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
 @keyframes shimmer { 100% { transform:translateX(-100%); } }
