@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import Script from "next/script";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, BriefcaseBusiness, Camera, CheckCircle2, Clock3, FileText, GraduationCap, Loader2, Phone, Printer, Save, Send, ShieldCheck, UploadCloud, UserRound } from "lucide-react";
 
 const DRAFT_KEY = "second-chance-public-registration-draft-v1";
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "";
 const trainingOptions = [
   "التصميم الغرافيكي والهوية البصرية", "صناعة المحتوى والتسويق الرقمي", "تصميم وتطوير المواقع الإلكترونية",
   "برمجة تطبيقات الهاتف", "الذكاء الاصطناعي وتطبيقاته المهنية", "الكهرباء المنزلية", "الطاقة الشمسية",
@@ -74,7 +76,7 @@ export function PublicRegistrationForm() {
     const form = formRef.current;
     if (!form) return;
     const draft: Record<string, string> = {};
-    new FormData(form).forEach((value, key) => { if (typeof value === "string" && key !== "website") draft[key] = value; });
+    new FormData(form).forEach((value, key) => { if (typeof value === "string" && key !== "website" && key !== "cf-turnstile-response") draft[key] = value; });
     localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
     setDraftLoaded(true);
   }
@@ -114,6 +116,7 @@ export function PublicRegistrationForm() {
     const data = new FormData(event.currentTarget);
     const photo = data.get("photo");
     if (!(photo instanceof File) || !photo.size) return setError("يرجى إضافة صورة المترشح.");
+    if (TURNSTILE_SITE_KEY && !String(data.get("cf-turnstile-response") || "")) return setError("يرجى إتمام التحقق الأمني قبل الإرسال.");
     setSaving(true); setError("");
     try {
       const response = await fetch("/api/public-registration", { method: "POST", body: data });
@@ -149,6 +152,7 @@ export function PublicRegistrationForm() {
   }
 
   return <form ref={formRef} onSubmit={submit} className="space-y-5" onChange={() => { if (draftLoaded) saveDraft(); }}>
+    {TURNSTILE_SITE_KEY && <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js" strategy="afterInteractive" />}
     <input name="website" tabIndex={-1} autoComplete="off" className="absolute -left-[9999px] h-0 w-0 opacity-0" aria-hidden="true" />
     <div className="rounded-[1.8rem] border border-blue-100 bg-white p-4 shadow-sm sm:p-6">
       <div className="mb-4 flex items-center justify-between text-xs font-bold text-slate-500"><span>المرحلة {step + 1} من {steps.length}</span><span>{Math.round(progress)}%</span></div>
@@ -157,13 +161,14 @@ export function PublicRegistrationForm() {
       {draftLoaded && <div className="mt-4 flex items-center gap-2 rounded-xl bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800"><Save size={15} /> يتم حفظ المسودة تلقائيًا على هذا الجهاز.</div>}
     </div>
 
-    {step === 0 && <section className={section}><h2 className="mb-6 text-xl font-black">المعلومات الشخصية</h2><div className="grid gap-6 lg:grid-cols-[220px_1fr]">
+    {step === 0 && <section className={section}><h2 className="mb-2 text-xl font-black">المعلومات الشخصية</h2><p className="mb-6 text-sm text-slate-500">أدخل البيانات كما تظهر في الوثائق الرسمية. رقم البطاقة الوطنية اختياري لمن لا يتوفر عليه.</p><div className="grid gap-6 lg:grid-cols-[220px_1fr]">
       <label className="flex min-h-64 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-3xl border-2 border-dashed border-blue-200 bg-blue-50/50 text-center">{photoPreview ? <img src={photoPreview} alt="معاينة" className="h-64 w-full object-cover" /> : <><Camera size={42} className="text-blue-700" /><span className="mt-3 font-black">صورة المترشح *</span><span className="text-xs text-slate-500">حتى 2MB</span></>}<input required name="photo" type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(e) => { const file = e.target.files?.[0]; setPhotoPreview(file ? URL.createObjectURL(file) : ""); }} /></label>
       <div className="grid gap-5 md:grid-cols-2">
-        <label className="text-sm font-bold">رقم مسار *<input required name="masarNumber" maxLength={30} className={input} /></label>
+        <label className="text-sm font-bold">رقم مسار *<input required name="masarNumber" minLength={6} maxLength={30} pattern="[A-Za-z0-9-]{6,30}" autoCapitalize="characters" placeholder="مثال: G123456789" className={`${input} uppercase`} /></label>
+        <label className="text-sm font-bold">رقم البطاقة الوطنية<input name="identityNumber" minLength={5} maxLength={40} pattern="[A-Za-z0-9-]{5,40}" autoCapitalize="characters" placeholder="مثال: AB123456" className={`${input} uppercase`} /></label>
         <label className="text-sm font-bold">الجنس *<select required name="gender" className={input} defaultValue=""><option value="">اختر</option><option>ذكر</option><option>أنثى</option></select></label>
-        <label className="text-sm font-bold">الاسم الشخصي *<input required name="firstName" maxLength={80} className={input} /></label>
-        <label className="text-sm font-bold">الاسم العائلي *<input required name="lastName" maxLength={80} className={input} /></label>
+        <label className="text-sm font-bold">الاسم الشخصي *<input required name="firstName" maxLength={80} autoComplete="given-name" className={input} /></label>
+        <label className="text-sm font-bold">الاسم العائلي *<input required name="lastName" maxLength={80} autoComplete="family-name" className={input} /></label>
         <label className="text-sm font-bold">تاريخ الازدياد *<input required name="birthDate" type="date" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} className={input} /></label>
         <label className="text-sm font-bold">مكان الازدياد<input name="birthPlace" maxLength={120} className={input} /></label>
         <div className={`md:col-span-2 rounded-xl p-3 text-sm font-bold ${ageIsValid ? "bg-emerald-50 text-emerald-800" : "bg-slate-50 text-slate-500"}`}>{age === null ? "سيتم حساب العمر تلقائيًا." : `العمر: ${age} سنة ${ageIsValid ? "— مؤهل" : "— غير مؤهل"}`}</div>
@@ -199,10 +204,10 @@ export function PublicRegistrationForm() {
     </div></section>}
 
     {step === 4 && <section className={section}><h2 className="mb-2 text-xl font-black">الوثائق الاختيارية</h2><p className="mb-6 text-sm text-slate-500">PDF أو صورة، بحد أقصى 5MB لكل وثيقة. صورة المترشح إلزامية في المرحلة الأولى.</p><div className="grid gap-4 md:grid-cols-3">
-      {[['identityDocument','وثيقة الهوية'],['educationDocument','آخر وثيقة دراسية'],['otherDocument','وثيقة إضافية']].map(([name,label]) => <label key={name} className="flex min-h-40 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 p-4 text-center hover:border-blue-400"><FileText className="text-blue-700" /><span className="mt-3 text-sm font-black">{label}</span><span className="mt-1 text-xs text-slate-500">PDF / JPG / PNG / WEBP</span><input name={name} type="file" accept="application/pdf,image/jpeg,image/png,image/webp" className="mt-3 block w-full text-xs" /></label>)}
+      {[["identityDocument","وثيقة الهوية"],["educationDocument","آخر وثيقة دراسية"],["otherDocument","وثيقة إضافية"]].map(([name,label]) => <label key={name} className="flex min-h-40 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 p-4 text-center hover:border-blue-400"><FileText className="text-blue-700" /><span className="mt-3 text-sm font-black">{label}</span><span className="mt-1 text-xs text-slate-500">PDF / JPG / PNG / WEBP</span><input name={name} type="file" accept="application/pdf,image/jpeg,image/png,image/webp" className="mt-3 block w-full text-xs" /></label>)}
     </div></section>}
 
-    {step === 5 && <section className={section}><h2 className="mb-5 text-xl font-black">المراجعة والإرسال</h2><div className="rounded-2xl bg-blue-50 p-5 text-sm leading-7 text-blue-950">راجع بياناتك ووثائقك. إرسال الطلب يعني التسجيل القبلي فقط ولا يضمن القبول النهائي.</div><div className="mt-5 space-y-3 rounded-2xl bg-emerald-50 p-4 text-sm text-emerald-950"><label className="flex gap-3"><input required name="declaration" type="checkbox" /><span>أقر بصحة المعلومات المدخلة.</span></label><label className="flex gap-3"><input required name="consent" type="checkbox" /><span>أوافق على معالجة البيانات لأغراض التسجيل والتوجيه.</span></label></div></section>}
+    {step === 5 && <section className={section}><h2 className="mb-5 text-xl font-black">المراجعة والإرسال</h2><div className="rounded-2xl bg-blue-50 p-5 text-sm leading-7 text-blue-950">راجع بياناتك ووثائقك. إرسال الطلب يعني التسجيل القبلي فقط ولا يضمن القبول النهائي.</div><div className="mt-5 space-y-3 rounded-2xl bg-emerald-50 p-4 text-sm text-emerald-950"><label className="flex gap-3"><input required name="declaration" type="checkbox" /><span>أقر بصحة المعلومات المدخلة.</span></label><label className="flex gap-3"><input required name="consent" type="checkbox" /><span>أوافق على معالجة البيانات لأغراض التسجيل والتوجيه.</span></label></div>{TURNSTILE_SITE_KEY ? <div className="mt-5 flex justify-center rounded-2xl border border-slate-200 bg-slate-50 p-4"><div className="cf-turnstile" data-sitekey={TURNSTILE_SITE_KEY} data-language="ar" data-theme="light" /></div> : <div className="mt-5 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900"><ShieldCheck className="mt-0.5 shrink-0" size={20} /><p>الحماية الأساسية مفعلة. لتفعيل Cloudflare Turnstile أضف مفاتيح البيئة في Vercel.</p></div>}</section>}
 
     {error && <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">{error}</div>}
     <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
