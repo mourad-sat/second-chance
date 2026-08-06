@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import {
   Archive,
   BarChart3,
@@ -25,6 +26,8 @@ import {
   X
 } from "lucide-react";
 import { visibleForRole } from "@/lib/permissions";
+
+const COLLAPSED_KEY = "second-chance-sidebar-collapsed";
 
 const sections = [
   { title: "الرئيسية", items: [{ href: "/", label: "لوحة القيادة", icon: LayoutDashboard }, { href: "/notifications", label: "مركز الإشعارات", icon: BellRing }] },
@@ -51,12 +54,31 @@ type SidebarProps = {
   onToggleCollapsed?: () => void;
 };
 
-export function Sidebar({ mobile = false, onClose, role = "VIEWER", collapsed = false, onToggleCollapsed }: SidebarProps) {
+export function Sidebar({ mobile = false, onClose, role = "VIEWER", collapsed, onToggleCollapsed }: SidebarProps) {
   const pathname = usePathname();
-  const compact = collapsed && !mobile;
+  const [localCollapsed, setLocalCollapsed] = useState(false);
+
+  useEffect(() => {
+    if (mobile || typeof collapsed === "boolean") return;
+    setLocalCollapsed(localStorage.getItem(COLLAPSED_KEY) === "1");
+  }, [mobile, collapsed]);
+
+  const compact = !mobile && (typeof collapsed === "boolean" ? collapsed : localCollapsed);
   const visibleSections = sections
     .map((section) => ({ ...section, items: section.items.filter((item) => visibleForRole(role, item.href)) }))
     .filter((section) => section.items.length > 0);
+
+  function toggleCollapsed() {
+    if (onToggleCollapsed) {
+      onToggleCollapsed();
+      return;
+    }
+    setLocalCollapsed((value) => {
+      const next = !value;
+      localStorage.setItem(COLLAPSED_KEY, next ? "1" : "0");
+      return next;
+    });
+  }
 
   return (
     <aside
@@ -67,11 +89,11 @@ export function Sidebar({ mobile = false, onClose, role = "VIEWER", collapsed = 
 
       <div className={`relative border-b border-slate-100/90 ${compact ? "px-3 pb-4 pt-4" : "px-5 pb-5 pt-4"}`}>
         {mobile && <button onClick={onClose} className="absolute left-4 top-4 z-10 rounded-xl border border-slate-200 bg-white p-2 text-slate-500 shadow-sm hover:bg-slate-50" aria-label="إغلاق القائمة"><X size={19} /></button>}
-        {!mobile && onToggleCollapsed && (
+        {!mobile && (
           <button
             type="button"
-            onClick={onToggleCollapsed}
-            className={`absolute left-3 top-3 z-20 grid h-9 w-9 place-items-center rounded-xl border border-slate-200 bg-white text-slate-500 shadow-sm hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 ${compact ? "left-1/2 -translate-x-1/2" : ""}`}
+            onClick={toggleCollapsed}
+            className={`absolute top-3 z-20 grid h-9 w-9 place-items-center rounded-xl border border-slate-200 bg-white text-slate-500 shadow-sm hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 ${compact ? "left-1/2 -translate-x-1/2" : "left-3"}`}
             aria-label={compact ? "توسيع القائمة" : "طي القائمة"}
             title={compact ? "توسيع القائمة" : "طي القائمة"}
           >
@@ -85,14 +107,7 @@ export function Sidebar({ mobile = false, onClose, role = "VIEWER", collapsed = 
           className={`group block border border-blue-100/80 bg-white/85 text-center shadow-[0_18px_45px_-32px_rgba(29,107,227,0.55)] backdrop-blur transition hover:border-blue-200 ${compact ? "mt-10 rounded-2xl p-2" : "rounded-[1.65rem] p-3"}`}
           title={compact ? "منصة الفرصة الثانية" : undefined}
         >
-          <Image
-            src="/branding/nour-al-amal-mark.svg"
-            alt="جمعية نور الأمل"
-            width={230}
-            height={185}
-            priority
-            className={`mx-auto h-auto w-full ${compact ? "max-w-[48px]" : "max-w-[205px]"}`}
-          />
+          <Image src="/branding/nour-al-amal-mark.svg" alt="جمعية نور الأمل" width={230} height={185} priority className={`mx-auto h-auto w-full ${compact ? "max-w-[48px]" : "max-w-[205px]"}`} />
           {!compact && <><span className="mt-1 block text-[11px] font-black text-slate-500">منصة تدبير برنامج الفرصة الثانية</span><span className="mx-auto mt-2 block h-1 w-14 rounded-full bg-gradient-to-l from-blue-600 to-emerald-500" /></>}
         </Link>
       </div>
@@ -128,11 +143,7 @@ export function Sidebar({ mobile = false, onClose, role = "VIEWER", collapsed = 
 
       <div className={`relative border-t border-slate-100 ${compact ? "p-2.5" : "p-4"}`}>
         <div className={`overflow-hidden bg-gradient-to-l from-slate-950 via-blue-950 to-slate-900 text-white shadow-lg shadow-slate-200 ${compact ? "rounded-2xl p-2" : "rounded-2xl p-4"}`}>
-          {compact ? (
-            <span className="grid h-10 w-full place-items-center rounded-xl bg-white/10 text-xs font-black" title="Second Chance 3.0">3.0</span>
-          ) : (
-            <div className="flex items-center justify-between gap-3"><div><p className="text-xs font-black text-blue-300">Second Chance 3.0</p><p className="mt-1 text-[11px] leading-5 text-slate-300">التأهيل · التمكين · الإدماج</p></div><span className="grid h-10 w-10 place-items-center rounded-xl bg-white/10 text-xs font-black">3.0</span></div>
-          )}
+          {compact ? <span className="grid h-10 w-full place-items-center rounded-xl bg-white/10 text-xs font-black" title="Second Chance 3.0">3.0</span> : <div className="flex items-center justify-between gap-3"><div><p className="text-xs font-black text-blue-300">Second Chance 3.0</p><p className="mt-1 text-[11px] leading-5 text-slate-300">التأهيل · التمكين · الإدماج</p></div><span className="grid h-10 w-10 place-items-center rounded-xl bg-white/10 text-xs font-black">3.0</span></div>}
         </div>
       </div>
     </aside>
