@@ -11,18 +11,23 @@ type RequestBody = {
   actorName?: unknown;
 };
 
+function parseStringIds(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+
+  const ids = value.reduce<string[]>((result, item) => {
+    if (typeof item !== "string") return result;
+    const normalized = item.trim();
+    if (normalized) result.push(normalized);
+    return result;
+  }, []);
+
+  return [...new Set<string>(ids)];
+}
+
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as RequestBody;
-    const rawIds: unknown[] = Array.isArray(body.ids) ? body.ids : [];
-    const ids: string[] = Array.from(
-      new Set(
-        rawIds
-          .filter((value): value is string => typeof value === "string")
-          .map((value) => value.trim())
-          .filter((value) => value.length > 0)
-      )
-    );
+    const ids: string[] = parseStringIds(body.ids);
     const action: BulkAction | null = body.action === "archive" || body.action === "trash" ? body.action : null;
     const reason = typeof body.reason === "string" && body.reason.trim() ? body.reason.trim() : null;
     const actorName = typeof body.actorName === "string" && body.actorName.trim() ? body.actorName.trim() : "إدارة المنصة";
