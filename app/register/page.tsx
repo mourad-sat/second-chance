@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { PublicRegistrationForm } from "@/components/PublicRegistrationForm";
+import { PublicRegistrationPhotoGuard } from "@/components/PublicRegistrationPhotoGuard";
 import { CalendarDays, Clock3, Printer, ShieldCheck } from "lucide-react";
 
 export const metadata = {
@@ -15,12 +15,18 @@ export default function PublicRegistrationPage() {
       <div className="mx-auto w-full max-w-[1180px]">
         <header className="public-registration-brand mb-6 flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex min-w-0 items-center">
-            <img
-              src="/branding/nour-al-amal-full.svg"
-              alt="جمعية نور الأمل — التأهيل، التمكين، الإدماج"
-              className="h-auto w-[230px] max-w-full object-contain sm:w-[280px] lg:w-[320px]"
-              loading="eager"
-            />
+            <object
+              data="/branding/nour-al-amal-full.svg"
+              type="image/svg+xml"
+              aria-label="جمعية نور الأمل — التأهيل، التمكين، الإدماج"
+              className="h-[96px] w-[330px] max-w-full overflow-hidden sm:h-[110px] sm:w-[390px]"
+            >
+              <img
+                src="/branding/nour-al-amal-mark.svg"
+                alt="جمعية نور الأمل"
+                className="h-20 w-20 object-contain"
+              />
+            </object>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
@@ -37,7 +43,7 @@ export default function PublicRegistrationPage() {
         </header>
 
         <div className="public-registration-shell">
-          <PublicRegistrationForm />
+          <PublicRegistrationPhotoGuard />
         </div>
 
         <footer className="mt-5 flex items-center justify-center gap-2 rounded-2xl border border-emerald-100 bg-emerald-50/70 px-5 py-4 text-center text-xs font-semibold leading-6 text-emerald-800">
