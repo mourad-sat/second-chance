@@ -23,6 +23,7 @@ export default async function BeneficiariesPage() {
       firstName: true,
       lastName: true,
       profilePhotoUrl: true,
+      profilePhotoPathname: true,
       gender: true,
       birthDate: true,
       phone: true,
@@ -76,6 +77,7 @@ export default async function BeneficiariesPage() {
     const serial = String(beneficiaries.length - index).padStart(5, "0");
     const required = [beneficiary.firstName, beneficiary.lastName, beneficiary.birthDate, beneficiary.masarNumber, beneficiary.phone, beneficiary.address, beneficiary.lastEducationLevel, beneficiary.personalProject, beneficiary.careerChoice1];
     const completionRate = Math.round((required.filter(Boolean).length / required.length) * 100);
+    const hasProfilePhoto = Boolean(beneficiary.profilePhotoPathname || beneficiary.profilePhotoUrl);
 
     return {
       id: beneficiary.id,
@@ -83,7 +85,7 @@ export default async function BeneficiariesPage() {
       masarNumber: beneficiary.masarNumber,
       firstName: beneficiary.firstName,
       lastName: beneficiary.lastName,
-      profilePhotoUrl: beneficiary.profilePhotoUrl,
+      profilePhotoUrl: hasProfilePhoto ? `/api/beneficiaries/${beneficiary.id}/photo` : null,
       gender: beneficiary.gender,
       birthDate: beneficiary.birthDate?.toISOString() || null,
       phone: beneficiary.phone,
