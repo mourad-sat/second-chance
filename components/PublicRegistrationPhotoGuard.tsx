@@ -25,6 +25,38 @@ export function PublicRegistrationPhotoGuard() {
       // Ignore malformed legacy drafts. The form itself will clean them up.
     }
 
+    const ensureFrenchNameField = () => {
+      const form = document.querySelector<HTMLFormElement>("form");
+      if (!form || form.querySelector('[data-full-name-french="true"]')) return;
+      const lastName = form.querySelector<HTMLInputElement>('input[name="lastName"]');
+      if (!lastName) return;
+
+      const label = document.createElement("label");
+      label.className = "text-sm font-bold";
+      label.dataset.fullNameFrench = "true";
+      label.textContent = "الاسم الكامل بالفرنسية *";
+
+      const input = document.createElement("input");
+      input.type = "text";
+      input.name = "fullNameFrench";
+      input.required = true;
+      input.maxLength = 120;
+      input.autocomplete = "name";
+      input.dir = "ltr";
+      input.placeholder = "Exemple : MOHAMED EL ALAOUI";
+      input.pattern = "[A-Za-zÀ-ÖØ-öø-ÿ' -]{3,120}";
+      input.title = "اكتب الاسم بالحروف اللاتينية فقط.";
+      input.className = "mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-left text-sm uppercase outline-none transition focus:border-blue-600 focus:ring-4 focus:ring-blue-100";
+      input.value = valuesRef.current.fullNameFrench?.[0] || "";
+      input.addEventListener("input", () => {
+        input.value = input.value.toUpperCase();
+      });
+
+      label.appendChild(input);
+      const lastNameLabel = lastName.closest("label");
+      if (lastNameLabel?.parentElement) lastNameLabel.after(label);
+    };
+
     const captureField = (target: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement) => {
       const name = target.name;
       if (!name || name === "website" || name === "cf-turnstile-response") return;
@@ -49,6 +81,15 @@ export function PublicRegistrationPhotoGuard() {
       }
 
       valuesRef.current[name] = [target.value];
+      if (name === "fullNameFrench") {
+        try {
+          const draft = JSON.parse(localStorage.getItem(DRAFT_KEY) || "{}") as Record<string, string>;
+          draft.fullNameFrench = target.value;
+          localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+        } catch {
+          // Ignore local storage failures.
+        }
+      }
     };
 
     const captureAllMountedFields = () => {
@@ -56,15 +97,14 @@ export function PublicRegistrationPhotoGuard() {
       if (!form) return;
       const fields = Array.from(form.elements);
       for (const field of fields) {
-        if (field instanceof HTMLInputElement || field instanceof HTMLSelectElement || field instanceof HTMLTextAreaElement) {
-          captureField(field);
-        }
+        if (field instanceof HTMLInputElement || field instanceof HTMLSelectElement || field instanceof HTMLTextAreaElement) captureField(field);
       }
     };
 
     const restoreMountedFields = () => {
       const form = document.querySelector<HTMLFormElement>("form");
       if (!form) return;
+      ensureFrenchNameField();
 
       for (const [name, values] of Object.entries(valuesRef.current)) {
         const fields = Array.from(form.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(`[name="${CSS.escape(name)}"]`));
@@ -118,7 +158,6 @@ export function PublicRegistrationPhotoGuard() {
       for (const [name, files] of Object.entries(filesRef.current)) {
         const mounted = form.querySelector<HTMLInputElement>(`input[type="file"][name="${CSS.escape(name)}"]`);
         if (mounted?.files?.length || !files.length) continue;
-
         const hiddenFile = document.createElement("input");
         hiddenFile.type = "file";
         hiddenFile.name = name;
@@ -138,27 +177,59 @@ export function PublicRegistrationPhotoGuard() {
 
     const handleFieldEvent = (event: Event) => {
       const target = event.target;
-      if (target instanceof HTMLInputElement || target instanceof HTMLSelectElement || target instanceof HTMLTextAreaElement) {
-        captureField(target);
+      if (target instanceof HTMLInputElement || target instanceof HTMLSelectElement || target instanceof HTMLTextAreaElement) captureField(target);
+    };
+
+    const handleClickCapture = (event: MouseEvent) => {
+      const button = event.target instanceof Element ? event.target.closest("button") : null;
+      if (!button || !button.textContent?.includes("التالي")) return;
+      const frenchName = document.querySelector<HTMLInputElement>('input[name="fullNameFrench"]');
+      if (frenchName && !frenchName.checkValidity()) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        frenchName.reportValidity();
+        frenchName.focus();
       }
     };
 
     const handleSubmitCapture = (event: Event) => {
       const form = event.target;
-      if (form instanceof HTMLFormElement) injectMissingValuesBeforeSubmit(form);
+      if (!(form instanceof HTMLFormElement)) return;
+      const frenchName = valuesRef.current.fullNameFrench?.[0]?.trim() || "";
+      if (!frenchName || !/^[A-Za-zÀ-ÖØ-öø-ÿ' -]{3,120}$/.test(frenchName)) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        const visible = form.querySelector<HTMLInputElement>('input[name="fullNameFrench"]');
+        visible?.reportValidity();
+        visible?.focus();
+        return;
+      }
+      injectMissingValuesBeforeSubmit(form);
+    };
+
+    const originalFetch = window.fetch.bind(window);
+    window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+      if (url === "/api/public-registration" || url.endsWith("/api/public-registration")) {
+        return originalFetch("/api/public-registration-v2", init);
+      }
+      return originalFetch(input, init);
     };
 
     const observer = new MutationObserver(() => queueMicrotask(restoreMountedFields));
     observer.observe(document.body, { childList: true, subtree: true });
     document.addEventListener("input", handleFieldEvent, true);
     document.addEventListener("change", handleFieldEvent, true);
+    document.addEventListener("click", handleClickCapture, true);
     document.addEventListener("submit", handleSubmitCapture, true);
     restoreMountedFields();
 
     return () => {
       observer.disconnect();
+      window.fetch = originalFetch;
       document.removeEventListener("input", handleFieldEvent, true);
       document.removeEventListener("change", handleFieldEvent, true);
+      document.removeEventListener("click", handleClickCapture, true);
       document.removeEventListener("submit", handleSubmitCapture, true);
       clearInjected();
     };
