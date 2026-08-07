@@ -1,5 +1,6 @@
 import { ReactNode } from "react";
 import { BeneficiaryQuickActions } from "@/components/BeneficiaryQuickActions";
+import { BeneficiaryPrivatePhotoBridge } from "@/components/BeneficiaryPrivatePhotoBridge";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -23,12 +24,19 @@ export default async function BeneficiaryLayout({
       lastName: true,
       registrationNumber: true,
       status: true,
-      createdAt: true
+      createdAt: true,
+      profilePhotoUrl: true
     }
   });
 
   return (
     <>
+      {beneficiary && (
+        <BeneficiaryPrivatePhotoBridge
+          beneficiaryId={beneficiary.id}
+          privatePhotoUrl={beneficiary.profilePhotoUrl}
+        />
+      )}
       {children}
       {beneficiary && (
         <BeneficiaryQuickActions
