@@ -9,20 +9,18 @@ export const metadata = {
 
 export const dynamic = "force-dynamic";
 
-// Registration portal visual refresh: production rebuild marker.
 export default function PublicRegistrationPage() {
   return (
     <main dir="rtl" className="public-registration-page min-h-screen px-3 py-5 sm:px-6 sm:py-8">
       <div className="mx-auto w-full max-w-[1180px]">
         <header className="public-registration-brand mb-6 flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-4">
-            <span className="grid h-16 w-16 shrink-0 place-items-center rounded-full border border-emerald-100 bg-white shadow-lg shadow-emerald-900/10 sm:h-20 sm:w-20">
-              <img src="/branding/nour-al-amal-mark.svg" alt="شعار جمعية نور الأمل" className="h-12 w-12 object-contain sm:h-14 sm:w-14" />
-            </span>
-            <div>
-              <h1 className="text-xl font-black text-emerald-900 sm:text-2xl">مدرسة الفرصة الثانية</h1>
-              <p className="mt-1 text-sm font-semibold text-slate-500">منصة تسجيل المترشحين الجدد — استمارة التسجيل القبلي</p>
-            </div>
+          <div className="flex min-w-0 items-center">
+            <img
+              src="/branding/nour-al-amal-full.svg"
+              alt="جمعية نور الأمل — التأهيل، التمكين، الإدماج"
+              className="h-auto w-[230px] max-w-full object-contain sm:w-[280px] lg:w-[320px]"
+              loading="eager"
+            />
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
