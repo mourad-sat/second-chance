@@ -9,6 +9,7 @@ export const metadata = {
 
 export const dynamic = "force-dynamic";
 
+// Registration portal visual refresh: production rebuild marker.
 export default function PublicRegistrationPage() {
   return (
     <main dir="rtl" className="public-registration-page min-h-screen px-3 py-5 sm:px-6 sm:py-8">
