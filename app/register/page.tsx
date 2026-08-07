@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { PublicRegistrationPhotoGuard } from "@/components/PublicRegistrationPhotoGuard";
+import { RegistrationBrandLogo } from "@/components/RegistrationBrandLogo";
 import { CalendarDays, Clock3, Printer, ShieldCheck } from "lucide-react";
 
 export const metadata = {
@@ -15,18 +16,7 @@ export default function PublicRegistrationPage() {
       <div className="mx-auto w-full max-w-[1180px]">
         <header className="public-registration-brand mb-6 flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex min-w-0 items-center">
-            <object
-              data="/branding/nour-al-amal-full.svg"
-              type="image/svg+xml"
-              aria-label="جمعية نور الأمل — التأهيل، التمكين، الإدماج"
-              className="h-[96px] w-[330px] max-w-full overflow-hidden sm:h-[110px] sm:w-[390px]"
-            >
-              <img
-                src="/branding/nour-al-amal-mark.svg"
-                alt="جمعية نور الأمل"
-                className="h-20 w-20 object-contain"
-              />
-            </object>
+            <RegistrationBrandLogo />
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
