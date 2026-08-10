@@ -4,16 +4,42 @@ import { useEffect, useRef } from "react";
 import { PublicRegistrationForm } from "./PublicRegistrationForm";
 
 const DRAFT_KEY = "second-chance-public-registration-draft-v1";
+const MAX_TOTAL_UPLOAD_BYTES = 3_700_000;
+const MAX_PDF_BYTES = 900_000;
 
 type StoredValues = Record<string, string[]>;
 type StoredFiles = Record<string, File[]>;
 
+async function compressImage(file: File, maxDimension: number, quality: number) {
+  if (!file.type.startsWith("image/") || file.size <= 450_000) return file;
+
+  const bitmap = await createImageBitmap(file);
+  const ratio = Math.min(1, maxDimension / Math.max(bitmap.width, bitmap.height));
+  const width = Math.max(1, Math.round(bitmap.width * ratio));
+  const height = Math.max(1, Math.round(bitmap.height * ratio));
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext("2d");
+  if (!context) return file;
+  context.drawImage(bitmap, 0, 0, width, height);
+  bitmap.close();
+
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", quality));
+  if (!blob || blob.size >= file.size) return file;
+  const baseName = file.name.replace(/\.[^.]+$/, "") || "image";
+  return new File([blob], `${baseName}.jpg`, { type: "image/jpeg", lastModified: Date.now() });
+}
+
 export function PublicRegistrationPhotoGuard() {
   const valuesRef = useRef<StoredValues>({});
   const filesRef = useRef<StoredFiles>({});
+  const pendingFilesRef = useRef<Record<string, Promise<File[]>>>({});
   const injectedRef = useRef<HTMLElement[]>([]);
 
   useEffect(() => {
+    let resubmitting = false;
+
     try {
       const draft = JSON.parse(localStorage.getItem(DRAFT_KEY) || "null") as Record<string, string> | null;
       if (draft) {
@@ -57,13 +83,51 @@ export function PublicRegistrationPhotoGuard() {
       if (lastNameLabel?.parentElement) lastNameLabel.after(label);
     };
 
+    const prepareFiles = (target: HTMLInputElement, name: string, files: File[]) => {
+      const task = Promise.all(files.map(async (file) => {
+        if (file.type === "application/pdf") {
+          if (file.size > MAX_PDF_BYTES) {
+            window.alert(`الملف «${file.name}» كبير جدًا. يرجى استعمال PDF بحجم أقل من 900KB أو رفع صورة واضحة بدلًا منه.`);
+            return null;
+          }
+          return file;
+        }
+
+        if (file.type.startsWith("image/")) {
+          try {
+            return await compressImage(file, name === "photo" ? 1200 : 1600, name === "photo" ? 0.76 : 0.7);
+          } catch {
+            return file;
+          }
+        }
+        return file;
+      })).then((prepared) => {
+        const valid = prepared.filter((file): file is File => Boolean(file));
+        if (!valid.length) {
+          delete filesRef.current[name];
+          target.value = "";
+          return [];
+        }
+        filesRef.current[name] = valid;
+        try {
+          const transfer = new DataTransfer();
+          valid.forEach((file) => transfer.items.add(file));
+          target.files = transfer.files;
+        } catch {
+          // The stored compressed copy will be injected before submit.
+        }
+        return valid;
+      });
+      pendingFilesRef.current[name] = task;
+    };
+
     const captureField = (target: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement) => {
       const name = target.name;
       if (!name || name === "website" || name === "cf-turnstile-response") return;
 
       if (target instanceof HTMLInputElement && target.type === "file") {
         const files = Array.from(target.files || []);
-        if (files.length) filesRef.current[name] = files;
+        if (files.length) prepareFiles(target, name, files);
         return;
       }
 
@@ -97,7 +161,7 @@ export function PublicRegistrationPhotoGuard() {
       if (!form) return;
       for (const field of Array.from(form.elements)) {
         if (field instanceof HTMLInputElement || field instanceof HTMLSelectElement || field instanceof HTMLTextAreaElement) {
-          captureField(field);
+          if (!(field instanceof HTMLInputElement && field.type === "file")) captureField(field);
         }
       }
     };
@@ -195,9 +259,14 @@ export function PublicRegistrationPhotoGuard() {
       }
     };
 
-    const handleSubmitCapture = (event: Event) => {
+    const handleSubmitCapture = async (event: Event) => {
       const form = event.target;
       if (!(form instanceof HTMLFormElement)) return;
+      if (resubmitting) {
+        resubmitting = false;
+        return;
+      }
+
       const frenchName = valuesRef.current.fullNameFrench?.[0]?.trim() || "";
       if (!frenchName || !/^[A-Za-zÀ-ÖØ-öø-ÿ' -]{3,120}$/.test(frenchName)) {
         event.preventDefault();
@@ -207,7 +276,27 @@ export function PublicRegistrationPhotoGuard() {
         visible?.focus();
         return;
       }
+
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      try {
+        await Promise.all(Object.values(pendingFilesRef.current));
+      } catch {
+        window.alert("تعذر تجهيز أحد الملفات. يرجى إعادة اختياره ثم المحاولة مرة أخرى.");
+        return;
+      }
+
+      const totalBytes = Object.values(filesRef.current).flat().reduce((sum, file) => sum + file.size, 0);
+      if (totalBytes > MAX_TOTAL_UPLOAD_BYTES) {
+        const mb = (totalBytes / (1024 * 1024)).toFixed(1);
+        window.alert(`الحجم الإجمالي للملفات هو ${mb}MB وهو أكبر من الحد الآمن للإرسال. يرجى تقليل حجم ملفات PDF أو رفع صور بدلًا منها.`);
+        return;
+      }
+
       injectMissingValuesBeforeSubmit(form);
+      resubmitting = true;
+      form.requestSubmit();
     };
 
     const observer = new MutationObserver(() => queueMicrotask(restoreMountedFields));
