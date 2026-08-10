@@ -22,7 +22,7 @@ export function PublicRegistrationPhotoGuard() {
         }
       }
     } catch {
-      // Ignore malformed legacy drafts. The form itself will clean them up.
+      // Ignore malformed legacy drafts.
     }
 
     const ensureFrenchNameField = () => {
@@ -95,9 +95,10 @@ export function PublicRegistrationPhotoGuard() {
     const captureAllMountedFields = () => {
       const form = document.querySelector<HTMLFormElement>("form");
       if (!form) return;
-      const fields = Array.from(form.elements);
-      for (const field of fields) {
-        if (field instanceof HTMLInputElement || field instanceof HTMLSelectElement || field instanceof HTMLTextAreaElement) captureField(field);
+      for (const field of Array.from(form.elements)) {
+        if (field instanceof HTMLInputElement || field instanceof HTMLSelectElement || field instanceof HTMLTextAreaElement) {
+          captureField(field);
+        }
       }
     };
 
@@ -127,7 +128,7 @@ export function PublicRegistrationPhotoGuard() {
           files.forEach((file) => transfer.items.add(file));
           input.files = transfer.files;
         } catch {
-          // Some browsers disallow assigning FileList; submit injection below is the fallback.
+          // Submit injection below is the fallback.
         }
       }
     };
@@ -177,7 +178,9 @@ export function PublicRegistrationPhotoGuard() {
 
     const handleFieldEvent = (event: Event) => {
       const target = event.target;
-      if (target instanceof HTMLInputElement || target instanceof HTMLSelectElement || target instanceof HTMLTextAreaElement) captureField(target);
+      if (target instanceof HTMLInputElement || target instanceof HTMLSelectElement || target instanceof HTMLTextAreaElement) {
+        captureField(target);
+      }
     };
 
     const handleClickCapture = (event: MouseEvent) => {
@@ -207,15 +210,6 @@ export function PublicRegistrationPhotoGuard() {
       injectMissingValuesBeforeSubmit(form);
     };
 
-    const originalFetch = window.fetch.bind(window);
-    window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
-      const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
-      if (url === "/api/public-registration" || url.endsWith("/api/public-registration")) {
-        return originalFetch("/api/public-registration-v2", init);
-      }
-      return originalFetch(input, init);
-    };
-
     const observer = new MutationObserver(() => queueMicrotask(restoreMountedFields));
     observer.observe(document.body, { childList: true, subtree: true });
     document.addEventListener("input", handleFieldEvent, true);
@@ -226,7 +220,6 @@ export function PublicRegistrationPhotoGuard() {
 
     return () => {
       observer.disconnect();
-      window.fetch = originalFetch;
       document.removeEventListener("input", handleFieldEvent, true);
       document.removeEventListener("change", handleFieldEvent, true);
       document.removeEventListener("click", handleClickCapture, true);
