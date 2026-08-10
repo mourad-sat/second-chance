@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { PublicRegistrationPhotoGuard } from "@/components/PublicRegistrationPhotoGuard";
+import { PublicRegistrationDocumentHider } from "@/components/PublicRegistrationDocumentHider";
 import { RegistrationBrandLogo } from "@/components/RegistrationBrandLogo";
 import { CalendarDays, Clock3, Printer, ShieldCheck } from "lucide-react";
 
@@ -33,6 +34,7 @@ export default function PublicRegistrationPage() {
         </header>
 
         <div className="public-registration-shell">
+          <PublicRegistrationDocumentHider />
           <PublicRegistrationPhotoGuard />
         </div>
 
